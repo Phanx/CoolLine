@@ -307,8 +307,8 @@ end
 do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
 	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
-	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%.3g", "")
-	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%.3g", "")
+	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
+	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
 		local text = rtext and rtext:GetText()
 		if text and (strfind(text, cooldown1) or strfind(text, cooldown2)) then
