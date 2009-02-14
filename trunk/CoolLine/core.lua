@@ -42,7 +42,8 @@ function CoolLine:ADDON_LOADED(a1)
 	
 	CoolLineDB = CoolLineDB or { }
 	db = CoolLineDB
-	if db.dbinit ~= 0 then
+	if db.dbinit ~= 1 then
+		db.dbinit = 1
 		for k,v in pairs({
 			w = 360, h = 18, x = 0, y = -240,
 			statusbar = "Blizzard",
@@ -52,6 +53,8 @@ function CoolLine:ADDON_LOADED(a1)
 			font = "Friz Quadrata TT",
 			fontsize = 10,
 			fontcolor = { r = 1, g = 1, b = 1, a = 0.8, },
+			spellcolor = { r = 0.8, g = 0.4, b = 0, a = 1, },
+			nospellcolor = { r = 0, g = 0, b = 0, a = 1, },
 			inactivealpha = 0.5,
 			activealpha = 1.0,
 			block = {  -- [spell or item name] = true,
@@ -60,7 +63,6 @@ function CoolLine:ADDON_LOADED(a1)
 		}) do
 			db[k] = (db[k] ~= nil and db[k]) or v
 		end
-		db.dbinit = 0
 	end
 	block = db.block
 	
@@ -87,7 +89,7 @@ function CoolLine:ADDON_LOADED(a1)
 			t2:SetPoint("RIGHT", this, "RIGHT", -32, 0)
 			t2:SetNonSpaceWrap(true)
 			t2:SetFormattedText("Notes: %s\nAuthor: %s\nVersion: %s\n"..
-			                    "Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemName|r to add/remove filter", 
+			                    "Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemNameOrLink|r to add/remove filter", 
 			                     GetAddOnMetadata("CoolLine", "Notes") or "N/A",
 								 GetAddOnMetadata("CoolLine", "Author") or "N/A",
 								 GetAddOnMetadata("CoolLine", "Version") or "N/A")
@@ -103,7 +105,7 @@ function CoolLine:ADDON_LOADED(a1)
 	InterfaceOptions_AddCategory(panel)
 	
 	createfs = function(f, text, offset, just)
-		local fs = f or self.border:CreateFontString(nil, "OVERLAY")
+		local fs = f or self.overlay:CreateFontString(nil, "OVERLAY")
 		fs:SetFont(smed:Fetch("font", db.font), db.fontsize)
 		fs:SetTextColor(db.fontcolor.r, db.fontcolor.g, db.fontcolor.b, db.fontcolor.a)
 		fs:SetText(text)
@@ -148,6 +150,9 @@ function CoolLine:ADDON_LOADED(a1)
 		self.border:SetBackdrop(backdrop)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
 		
+		self.overlay = self.overlay or CreateFrame("Frame", nil, self.border)
+		self.overlay:SetFrameLevel(6)
+
 		section = (db.vertical and db.h or db.w) / 6
 		iconsize = db.vertical and db.w or db.h
 		SetValue = (db.vertical and (db.reverse and SetValueVR or SetValueV)) or (db.reverse and SetValueHR or SetValueH)
@@ -213,14 +218,13 @@ local function ClearCooldown(f, name)
 		end
 	end
 end
-local layer = { "ARTWORK", "OVERLAY" }
 local function SetupIcon(frame, position, alpha, tthrot, active, ctime)
 	throt = min(throt, tthrot or 1.5)
 	isactive = active or isactive
 	frame:SetAlpha(alpha)
 	if (ctime or 0) > ((frame.ptime or 0) + 0.3) then
 		frame.ptime = ctime
-		frame:SetDrawLayer(layer[random(1,2)])
+		frame:SetFrameLevel(random(3,5))
 	end
 	SetValue(frame, position)
 end
@@ -238,8 +242,7 @@ local function OnUpdate(this, a1)
 	end
 	
 	local ctime = GetTime()
-	isactive = false
-	throt = 1.5
+	isactive, throt = false, 1.5
 	for name, frame in pairs(cooldowns) do
 		local remain = frame.endtime - ctime
 		if remain < 30 then
@@ -275,10 +278,11 @@ local function OnUpdate(this, a1)
 		self:SetAlpha(db.inactivealpha)
 	end
 end
-local function NewCooldown(name, icon, endtime)
+local iconback = { bgFile="Interface\\AddOns\\CoolLine\\backdrop.tga" }
+local function NewCooldown(name, icon, endtime, isplayer)
 	local f
 	for index, frame in pairs(cooldowns) do
-		if frame.name == name then
+		if frame.name == name and frame.isplayer == isplayer then
 			f = frame
 			break
 		elseif frame.endtime + 0.1 > endtime and frame.endtime - 0.1 < endtime then
@@ -288,8 +292,12 @@ local function NewCooldown(name, icon, endtime)
 	if not f then
 		f = f or tremove(frames)
 		if not f then
-			f = self.border:CreateTexture(nil, "ARTWORK")
-			f:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+			f = CreateFrame("Frame", nil, CoolLine.border)
+			f:SetBackdrop(iconback)
+			f.icon = f:CreateTexture(nil, "ARTWORK")
+			f.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+			f.icon:SetPoint("TOPLEFT", 1, -1)
+			f.icon:SetPoint("BOTTOMRIGHT", -1, 1)
 		end
 		tinsert(cooldowns, f)
 	end
@@ -297,7 +305,10 @@ local function NewCooldown(name, icon, endtime)
 	f:SetHeight(iconsize)
 	f.name = name
 	f.endtime = endtime
-	f:SetTexture(icon)
+	f.icon:SetTexture(icon)
+	f.isplayer = isplayer
+	local c = db[isplayer and "spellcolor" or "nospellcolor"]
+	f:SetBackdropColor(c.r, c.g, c.b, c.a)
 	f:Show()
 	self:SetScript("OnUpdate", OnUpdate)
 	self:SetAlpha(db.activealpha)
@@ -355,7 +366,7 @@ do  -- scans spellbook to update cooldowns
 			local start, duration, enable = GetSpellCooldown(id, btype)
 			if enable == 1 and start > 0 then
 				if duration > 2.5 and not block[name] then
-					NewCooldown(name, GetSpellTexture(id, btype), start + duration)
+					NewCooldown(name, GetSpellTexture(id, btype), start + duration, btype == BOOKTYPE_SPELL)
 				end
 			else
 				ClearCooldown(nil, name)
@@ -491,17 +502,21 @@ function CoolLine:UNIT_EXITED_VEHICLE(a1)
 end
 
 
-
 local CoolLineDD
 local info = { }
 function ShowOptions(a1)
-	if type(a1) == "string" and a1 ~= "" then
-		if block[a1] then
-			block[a1] = nil
-			print("CoolLine: |cffffff00"..a1.."|r removed from filter.")
-		else
-			block[a1] = true
-			print("CoolLine: |cffffff00"..a1.."|r added to filter.")
+	if type(a1) == "string" and a1 ~= "" and a1 ~= "menu" and a1 ~= "options" and a1 ~= "help" then
+		if strfind(a1, "|H") then
+			a1 = strmatch(a1, "|h%[(.+)%]|h")
+		end
+		if a1 then
+			if block[a1] then
+				block[a1] = nil
+				print("|cff88ffffCool|r|cff88ff88Line|r: |cffffff00"..a1.."|r removed from filter.")
+			else
+				block[a1] = true
+				print("|cff88ffffCool|r|cff88ff88Line|r: |cffffff00"..a1.."|r added to filter.")
+			end
 		end
 		return
 	end
@@ -509,7 +524,7 @@ function ShowOptions(a1)
 		CoolLineDD = CreateFrame("Frame", "CoolLineDD", UIParent)
 		CoolLineDD.displayMode = "MENU"
 
-		local function Set(info, a1)
+		local function Set(b, a1)
 			if a1 == "unlock" then
 				if not CoolLine.resizer then
 					CoolLine:SetMovable(true)
@@ -560,17 +575,17 @@ function ShowOptions(a1)
 				updatelook()
 			end
 		end
-		local function SetSelect(info, a1)
-			db[a1] = tonumber(info.value) or info.value
-			local level, num = strmatch(info:GetName(), "DropDownList(%d+)Button(%d+)")
+		local function SetSelect(b, a1)
+			db[a1] = tonumber(b.value) or b.value
+			local level, num = strmatch(b:GetName(), "DropDownList(%d+)Button(%d+)")
 			level, num = tonumber(level) or 0, tonumber(num) or 0
 			for i = 2, level, 1 do
 				for j = 1, UIDROPDOWNMENU_MAXBUTTONS, 1 do
-					local b = _G["DropDownList"..i.."Button"..j.."Check"]
-					if b and i == level and j == num then
-						b:Show()
+					local check = _G["DropDownList"..i.."Button"..j.."Check"]
+					if check and i == level and j == num then
+						check:Show()
 					elseif b then
-						b:Hide()
+						check:Hide()
 					end
 				end
 			end
@@ -590,18 +605,18 @@ function ShowOptions(a1)
 			dbc.r, dbc.g, dbc.b, dbc.a = r, g, b, a
 			updatelook()
 		end
-		local function HideCheck(info)
-			if info and info.GetName and _G[info:GetName().."Check"] then
-				_G[info:GetName().."Check"]:Hide()
+		local function HideCheck(b)
+			if b and b.GetName and _G[b:GetName().."Check"] then
+				_G[b:GetName().."Check"]:Hide()
 			end
 		end
-		local function AddButton(info, level, text, keepshown)
+		local function AddButton(lvl, text, keepshown)
 			info.text = text
 			info.keepShownOnClick = keepshown
-			UIDropDownMenu_AddButton(info, level)
+			UIDropDownMenu_AddButton(info, lvl)
 			wipe(info)
 		end
-		local function AddToggleButton(info, level, text, value)
+		local function AddToggle(lvl, text, value)
 			info.arg1 = value
 			info.func = Set
 			if value == "unlock" then
@@ -609,15 +624,15 @@ function ShowOptions(a1)
 			else
 				info.checked = db[value]
 			end
-			AddButton(info, level, text, 1)
+			AddButton(lvl, text, 1)
 		end
-		local function AddListButton(info, level, text, value)
+		local function AddList(lvl, text, value)
 			info.value = value
 			info.hasArrow = true
 			info.func = HideCheck
-			AddButton(info, level, text, 1)
+			AddButton(lvl, text, 1)
 		end
-		local function AddSelectButton(info, level, text, arg1, value)
+		local function AddSelect(lvl, text, arg1, value)
 			info.arg1 = arg1
 			info.func = SetSelect
 			info.value = value
@@ -628,9 +643,9 @@ function ShowOptions(a1)
 			else
 				info.checked = db[arg1] == value
 			end
-			AddButton(info, level, text, 1)
+			AddButton(lvl, text, 1)
 		end
-		local function AddColorButton(info, level, text, value)
+		local function AddColor(lvl, text, value)
 			local dbc = db[value]
 			if not dbc then return end
 			info.hasColorSwatch = true
@@ -639,52 +654,50 @@ function ShowOptions(a1)
 			info.swatchFunc, info.opacityFunc, info.cancelFunc = SetColor, SetColor, SetColor
 			info.value = value
 			info.func = UIDropDownMenuButton_OpenColorPicker
-			AddButton(info, level, text, nil)
+			AddButton(lvl, text, nil)
 		end
-		CoolLineDD.initialize = function(self, level)
-			if level == 1 then
+		CoolLineDD.initialize = function(self, lvl)
+			if lvl == 1 then
 				info.isTitle = true
-				AddButton(info, level, "|cff88ff88Cool|r|cff88ff88Line|r")
+				AddButton(lvl, "|cff88ffffCool|r|cff88ff88Line|r")
 				
-				AddListButton(info, level, "Texture", "statusbar")
-				AddColorButton(info, level, "Texture Color", "bgcolor")
-				
-				AddListButton(info, level, "Border", "border")
-				AddColorButton(info, level, "Border Color", "bordercolor")
-				
-				AddListButton(info, level, "Font", "font")
-				AddColorButton(info, level, "Font Color", "fontcolor")
-				AddListButton(info, level, "Font Size", "fontsize")
-				
-				AddListButton(info, level, "Inactive Opacity", "inactivealpha")
-				AddListButton(info, level, "Active Opacity", "activealpha")
-				
-				AddToggleButton(info, level, "Disable Equipped", "hideinv")
-				AddToggleButton(info, level, "Disable Bags", "hidebag")
-				AddToggleButton(info, level, "Disable Pet", "hidepet")
-				AddToggleButton(info, level, "Vertical", "vertical")
-				AddToggleButton(info, level, "Reverse", "reverse")
-				AddToggleButton(info, level, "Unlock", "unlock")
-			elseif level and level > 1 then
+				AddList(lvl, "Texture", "statusbar")
+				AddColor(lvl, "Texture Color", "bgcolor")
+				AddList(lvl, "Border", "border")
+				AddColor(lvl, "Border Color", "bordercolor")
+				AddList(lvl, "Font", "font")
+				AddColor(lvl, "Font Color", "fontcolor")
+				AddList(lvl, "Font Size", "fontsize")
+				AddColor(lvl, "My Spell Color", "spellcolor")
+				AddColor(lvl, "Item/Pet Color", "nospellcolor")
+				AddList(lvl, "Inactive Opacity", "inactivealpha")
+				AddList(lvl, "Active Opacity", "activealpha")
+				AddToggle(lvl, "Vertical", "vertical")
+				AddToggle(lvl, "Reverse", "reverse")
+				AddToggle(lvl, "Disable Equipped", "hideinv")
+				AddToggle(lvl, "Disable Bags", "hidebag")
+				AddToggle(lvl, "Disable Pet", "hidepet")
+				AddToggle(lvl, "Unlock", "unlock")
+			elseif lvl and lvl > 1 then
 				local sub = UIDROPDOWNMENU_MENU_VALUE
 				if sub == "font" or sub == "statusbar" or sub == "border" then
 					local t = smed:List(sub)
-					local starti = 20 * (level - 2) + 1
-					local endi = 20 * (level - 1)
+					local starti = 20 * (lvl - 2) + 1
+					local endi = 20 * (lvl - 1)
 					for i = starti, endi, 1 do
 						if not t[i] then break end
-						AddSelectButton(info, level, t[i], sub, t[i])
+						AddSelect(lvl, t[i], sub, t[i])
 						if i == endi and t[i + 1] then
-							AddListButton(info, level, "More", sub)
+							AddList(lvl, "More", sub)
 						end	
 					end
 				elseif sub == "fontsize" then
 					for i = 6, 28, 2 do
-						AddSelectButton(info, level, i, "fontsize", i)
+						AddSelect(lvl, i, "fontsize", i)
 					end
 				elseif sub == "inactivealpha" or sub == "activealpha" then
 					for i = 0, 1, 0.1 do
-						AddSelectButton(info, level, format("%.1f", i), sub, i)
+						AddSelect(lvl, format("%.1f", i), sub, i)
 					end
 				end
 			end
