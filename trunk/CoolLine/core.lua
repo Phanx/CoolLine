@@ -71,36 +71,34 @@ function CoolLine:ADDON_LOADED(a1)
 	local panel = CreateFrame("Frame")
 	panel.name = "CoolLine"
 	panel:SetScript("OnShow", function(this)
-		if not this.t1 then
-			local t1 = this:CreateFontString(nil, "ARTWORK")
-			t1:SetJustifyH("LEFT")
-			t1:SetJustifyV("TOP")
-			t1:SetFontObject(GameFontNormalLarge)
-			t1:SetPoint("TOPLEFT", 16, -16)
-			t1:SetText(this.name)
-			this.t1 = t1
-			
-			local t2 = this:CreateFontString(nil, "ARTWORK")
-			t2:SetJustifyH("LEFT")
-			t2:SetJustifyV("TOP")
-			t2:SetFontObject(GameFontHighlightSmall)
-			t2:SetHeight(43)
-			t2:SetPoint("TOPLEFT", t1, "BOTTOMLEFT", 0, -8)
-			t2:SetPoint("RIGHT", this, "RIGHT", -32, 0)
-			t2:SetNonSpaceWrap(true)
-			t2:SetFormattedText("Notes: %s\nAuthor: %s\nVersion: %s\n"..
-			                    "Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemNameOrLink|r to add/remove filter", 
-			                     GetAddOnMetadata("CoolLine", "Notes") or "N/A",
-								 GetAddOnMetadata("CoolLine", "Author") or "N/A",
-								 GetAddOnMetadata("CoolLine", "Version") or "N/A")
+		local t1 = this:CreateFontString(nil, "ARTWORK")
+		t1:SetJustifyH("LEFT")
+		t1:SetJustifyV("TOP")
+		t1:SetFontObject(GameFontNormalLarge)
+		t1:SetPoint("TOPLEFT", 16, -16)
+		t1:SetText(this.name)
 		
-			local b = CreateFrame("Button", nil, this, "UIPanelButtonTemplate")
-			b:SetWidth(120)
-			b:SetHeight(20)
-			b:SetText("Options Menu")
-			b:SetScript("OnClick", ShowOptions)
-			b:SetPoint("TOPLEFT", t2, "BOTTOMLEFT", -2, -8)
-		end
+		local t2 = this:CreateFontString(nil, "ARTWORK")
+		t2:SetJustifyH("LEFT")
+		t2:SetJustifyV("TOP")
+		t2:SetFontObject(GameFontHighlightSmall)
+		t2:SetHeight(43)
+		t2:SetPoint("TOPLEFT", t1, "BOTTOMLEFT", 0, -8)
+		t2:SetPoint("RIGHT", this, "RIGHT", -32, 0)
+		t2:SetNonSpaceWrap(true)
+		t2:SetFormattedText("Notes: %s\nAuthor: %s\nVersion: %s\n"..
+							"Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemNameOrLink|r to add/remove filter", 
+							 GetAddOnMetadata("CoolLine", "Notes") or "N/A",
+							 GetAddOnMetadata("CoolLine", "Author") or "N/A",
+							 GetAddOnMetadata("CoolLine", "Version") or "N/A")
+	
+		local b = CreateFrame("Button", nil, this, "UIPanelButtonTemplate")
+		b:SetWidth(120)
+		b:SetHeight(20)
+		b:SetText("Options Menu")
+		b:SetScript("OnClick", ShowOptions)
+		b:SetPoint("TOPLEFT", t2, "BOTTOMLEFT", -2, -8)
+		this:SetScript("OnShow", nil)
 	end)
 	InterfaceOptions_AddCategory(panel)
 	
@@ -204,8 +202,8 @@ function CoolLine:PLAYER_LOGIN()
 	self:SetAlpha((#cooldowns == 0 and db.inactivealpha) or db.activealpha)
 end
 
-
-local elapsed, throt, isactive = 0, 1.5, false
+local iconback = { bgFile="Interface\\AddOns\\CoolLine\\backdrop.tga" }
+local elapsed, throt, ptime, isactive = 0, 1.5, 0, false
 local function ClearCooldown(f, name)
 	name = name or (f and f.name)
 	for index, frame in ipairs(cooldowns) do
@@ -218,12 +216,11 @@ local function ClearCooldown(f, name)
 		end
 	end
 end
-local function SetupIcon(frame, position, alpha, tthrot, active, ctime)
+local function SetupIcon(frame, position, alpha, tthrot, active, fl)
 	throt = min(throt, tthrot or 1.5)
 	isactive = active or isactive
 	frame:SetAlpha(alpha)
-	if (ctime or 0) > ((frame.ptime or 0) + 0.3) then
-		frame.ptime = ctime
+	if fl then
 		frame:SetFrameLevel(random(3,5))
 	end
 	SetValue(frame, position)
@@ -241,44 +238,46 @@ local function OnUpdate(this, a1)
 		return
 	end
 	
-	local ctime = GetTime()
+	local dofl, ctime = nil, GetTime()
+	if ctime > ptime then
+		dofl, ptime = true, ctime + 0.4
+	end
 	isactive, throt = false, 1.5
 	for name, frame in pairs(cooldowns) do
 		local remain = frame.endtime - ctime
 		if remain < 30 then
-			local alpha = 1 - 0.5 * remain / 30
+			local alpha = 1 - remain / 60
 			if remain > 10 then
-				SetupIcon(frame, section * (2 + (remain - 10) / 20), alpha, 0.06, true, ctime)
+				SetupIcon(frame, section * (remain + 30) / 20, alpha, 0.06, true, dofl)
 			elseif remain > 1 then
-				SetupIcon(frame, section * (1 + (remain - 1) / 9), alpha, 0.03, true, ctime)
+				SetupIcon(frame, section * (remain + 8) / 9, alpha, 0.03, true, dofl)
 			elseif remain > 0.3 then
-				SetupIcon(frame, section * remain, alpha, 0, true, ctime)
+				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
 			elseif remain > 0 then
-				local size = iconsize + iconsize * (0.3 - remain) / 0.3
+				local size = iconsize * (0.6 - remain) / 0.3
 				frame:SetWidth(size)
 				frame:SetHeight(size)
-				SetupIcon(frame, section * remain, alpha, 0, true, ctime)
+				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
 			elseif remain > -1.3 then
-				SetupIcon(frame, 0, 1 + remain/1.3, 0, true, ctime)
+				SetupIcon(frame, 0, 1 + remain/1.3, 0, true, dofl)
 			else
 				throt, isactive = min(throt, 0.2), true
 				ClearCooldown(frame)
 			end
 		elseif remain < 60 then
-			SetupIcon(frame, section * (3 + (remain - 30) / 30), 0.5, 0.15, true, ctime)
+			SetupIcon(frame, section * (remain + 60) / 30, 0.5, 0.15, true, dofl)
 		elseif remain < 180 then
-			SetupIcon(frame, section * (4 + (remain - 60) / 120), 0.4, 0.3, true, ctime)
+			SetupIcon(frame, section * (remain + 420) / 120, 0.4, 0.3, true, dofl)
 		elseif remain < 600 then
-			SetupIcon(frame, section * (5 + (remain - 180) / 420), 0.4, 1.5, true, ctime)
+			SetupIcon(frame, section * (remain + 1920) / 420, 0.4, 1.5, true, dofl)
 		else
-			SetupIcon(frame, 6 * section + db.h, 0, 1.5, false, ctime)
+			SetupIcon(frame, 6 * section, 0, 1.5, false, dofl)
 		end
 	end
 	if not isactive and not CoolLine.unlock then
 		self:SetAlpha(db.inactivealpha)
 	end
 end
-local iconback = { bgFile="Interface\\AddOns\\CoolLine\\backdrop.tga" }
 local function NewCooldown(name, icon, endtime, isplayer)
 	local f
 	for index, frame in pairs(cooldowns) do
@@ -358,7 +357,7 @@ do  -- cache spells that have a cooldown
 end
 
 do  -- scans spellbook to update cooldowns
-	local selap = 0
+	local selap, srun = 0, nil
 	local spellthrot = CreateFrame("Frame", nil, CoolLine)
 	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
 	local function CheckSpellBook(btype)
@@ -376,7 +375,7 @@ do  -- scans spellbook to update cooldowns
 	local function SpellOnUpdate(this, a1)
 		selap = selap + a1
 		if selap < 0.5 then return end
-		selap = 0
+		selap, srun = 0, nil
 		this:SetScript("OnUpdate", nil)
 		CheckSpellBook(BOOKTYPE_SPELL)
 		if not db.hidepet and HasPetUI() then
@@ -386,6 +385,8 @@ do  -- scans spellbook to update cooldowns
 	-----------------------------------------
 	function CoolLine:SPELL_UPDATE_COOLDOWN()
 	-----------------------------------------
+		if srun then return end
+		srun = true
 		spellthrot:SetScript("OnUpdate", SpellOnUpdate)
 	end
 end
@@ -404,8 +405,7 @@ do  -- scans equipments and bags for item cooldowns
 				local name = GetItemInfo(GetInventoryItemLink("player", i))
 				if start > 0 and not block[name] then
 					if duration > 3 and duration < 3601 then
-						local texture = GetInventoryItemTexture("player", i)
-						NewCooldown(name, texture, start + duration)
+						NewCooldown(name, GetInventoryItemTexture("player", i), start + duration)
 					end
 				else
 					ClearCooldown(nil, name)
@@ -419,8 +419,7 @@ do  -- scans equipments and bags for item cooldowns
 					local name = GetItemInfo(GetContainerItemLink(i, j))
 					if start > 0 and not block[name] then
 						if duration > 3 and duration < 3601 then
-							local texture = GetContainerItemInfo(i, j)
-							NewCooldown(name, texture, start + duration)
+							NewCooldown(name, GetContainerItemInfo(i, j), start + duration)
 						end
 					else
 						ClearCooldown(nil, name)
