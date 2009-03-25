@@ -58,7 +58,7 @@ function CoolLine:ADDON_LOADED(a1)
 			inactivealpha = 0.5,
 			activealpha = 1.0,
 			block = {  -- [spell or item name] = true,
-				[GetItemInfo(6948)] = true,  -- Hearthstone
+				[GetItemInfo(6948) or "Hearthstone"] = true,  -- Hearthstone
 			},
 		}) do
 			db[k] = (db[k] ~= nil and db[k]) or v
@@ -127,9 +127,9 @@ function CoolLine:ADDON_LOADED(a1)
 		return fs
 	end
 	updatelook = function()
-		self:SetWidth(db.w)
-		self:SetHeight(db.h)
-		self:SetPoint("CENTER", UIParent, "CENTER", db.x, db.y)
+		self:SetWidth(db.w or 130)
+		self:SetHeight(db.h or 18)
+		self:SetPoint("CENTER", UIParent, "CENTER", db.x or 0, db.y or -240)
 		
 		self.bg = self.bg or self:CreateTexture(nil, "ARTWORK")
 		self.bg:SetTexture(smed:Fetch("statusbar", db.statusbar))
@@ -161,7 +161,7 @@ function CoolLine:ADDON_LOADED(a1)
 		tick30 = createfs(tick30, "30", section * 3)
 		tick60 = createfs(tick60, "60", section * 4)
 		tick120 = createfs(tick120, "3m", section * 5)
-		tick300 = createfs(tick300, "10m", section * 6, "RIGHT")
+		tick300 = createfs(tick300, "9m", section * 6, "RIGHT")
 		
 		if db.hidepet then
 			self:UnregisterEvent("UNIT_PET")
@@ -181,7 +181,11 @@ function CoolLine:ADDON_LOADED(a1)
 			frame:SetHeight(iconsize)
 		end
 	end
-	self:RegisterEvent("PLAYER_LOGIN")
+	if IsLoggedIn() then
+		CoolLine:PLAYER_LOGIN()
+	else
+		self:RegisterEvent("PLAYER_LOGIN")
+	end
 end
 
 --------------------------------
@@ -549,8 +553,7 @@ function ShowOptions(a1)
 					resize:SetScript("OnMouseDown", function(this) CoolLine:StartSizing("BOTTOMRIGHT") end)
 					resize:SetScript("OnMouseUp", function(this) 
 						CoolLine:StopMovingOrSizing()
-						local w, h = CoolLine:GetWidth(), CoolLine:GetHeight()
-						db.w, db.h = floor(w + 0.5), floor(h + 0.5)
+						db.w, db.h = floor(CoolLine:GetWidth() + 0.5), floor(CoolLine:GetHeight() + 0.5)
 						updatelook()
 					end)
 				end
@@ -659,7 +662,6 @@ function ShowOptions(a1)
 			if lvl == 1 then
 				info.isTitle = true
 				AddButton(lvl, "|cff88ffffCool|r|cff88ff88Line|r")
-				
 				AddList(lvl, "Texture", "statusbar")
 				AddColor(lvl, "Texture Color", "bgcolor")
 				AddList(lvl, "Border", "border")
