@@ -9,7 +9,8 @@ local _G = getfenv(0)
 local pairs, ipairs = pairs, ipairs
 local tinsert, tremove = tinsert, tremove
 local GetTime = GetTime
-local min, random = min, math.random
+local random = math.random
+local strmatch = strmatch
 local UnitExists, HasPetUI = UnitExists, HasPetUI
 
 local db, block
@@ -221,7 +222,7 @@ local function ClearCooldown(f, name)
 	end
 end
 local function SetupIcon(frame, position, alpha, tthrot, active, fl)
-	throt = min(throt, tthrot or 1.5)
+	throt = (throt < tthrot and throt) or tthrot
 	isactive = active or isactive
 	frame:SetAlpha(alpha)
 	if fl then
@@ -250,30 +251,31 @@ local function OnUpdate(this, a1)
 	for name, frame in pairs(cooldowns) do
 		local remain = frame.endtime - ctime
 		if remain < 30 then
-			local alpha = 1 - remain / 60
+			local alpha = 1 - remain * 0.0166  -- 1 - remain / 60
 			if remain > 10 then
-				SetupIcon(frame, section * (remain + 30) / 20, alpha, 0.06, true, dofl)
+				SetupIcon(frame, section * (remain + 30) * 0.05, alpha, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
 			elseif remain > 1 then
-				SetupIcon(frame, section * (remain + 8) / 9, alpha, 0.03, true, dofl)
+				SetupIcon(frame, section * (remain + 8) * 0.11, alpha, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
 			elseif remain > 0.3 then
 				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
 			elseif remain > 0 then
-				local size = iconsize * (0.6 - remain) / 0.3
+				local size = iconsize * (0.6 - remain) * 3.33  -- iconsize + iconsize * (0.3 - remain) / 0.3
 				frame:SetWidth(size)
 				frame:SetHeight(size)
 				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
 			elseif remain > -1.3 then
-				SetupIcon(frame, 0, 1 + remain/1.3, 0, true, dofl)
+				SetupIcon(frame, 0, 1 + remain * 0.769, 0, true, dofl)  -- 1 + remain/1.3
 			else
-				throt, isactive = min(throt, 0.2), true
+				throt = (throt < 0.2 and throt) or 0.2
+				isactive = true
 				ClearCooldown(frame)
 			end
 		elseif remain < 60 then
-			SetupIcon(frame, section * (remain + 60) / 30, 0.5, 0.15, true, dofl)
+			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.5, 0.15, true, dofl)  -- 3 + (remain - 30) / 30
 		elseif remain < 180 then
-			SetupIcon(frame, section * (remain + 420) / 120, 0.4, 0.3, true, dofl)
+			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.4, 0.3, true, dofl)  -- 4 + (remain - 60) / 120
 		elseif remain < 600 then
-			SetupIcon(frame, section * (remain + 1920) / 420, 0.4, 1.5, true, dofl)
+			SetupIcon(frame, section * (remain + 1920) * 0.00238, 0.4, 1.5, true, dofl)  -- 5 + (remain - 180) / 420
 		else
 			SetupIcon(frame, 6 * section, 0, 1.5, false, dofl)
 		end
@@ -325,7 +327,7 @@ do  -- cache spells that have a cooldown
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
 		local text = rtext and rtext:GetText()
-		if text and (strfind(text, cooldown1) or strfind(text, cooldown2)) then
+		if text and (strmatch(text, cooldown1) or strmatch(text, cooldown2)) then
 			return true
 		end
 	end
