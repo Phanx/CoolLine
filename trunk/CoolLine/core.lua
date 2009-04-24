@@ -150,7 +150,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
 		
 		self.overlay = self.overlay or CreateFrame("Frame", nil, self.border)
-		self.overlay:SetFrameLevel(6)
+		self.overlay:SetFrameLevel(8)
 
 		section = (db.vertical and db.h or db.w) / 6
 		iconsize = db.vertical and db.w or db.h
@@ -175,6 +175,11 @@ function CoolLine:ADDON_LOADED(a1)
 			self:UnregisterEvent("BAG_UPDATE_COOLDOWN")
 		else
 			self:RegisterEvent("BAG_UPDATE_COOLDOWN")
+		end
+		if db.hidefail then
+			self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
+		else
+			self:RegisterEvent("UNIT_SPELLCAST_FAILED")
 		end
 		CoolLine:SetAlpha((CoolLine.unlock or #cooldowns > 0) and db.activealpha or db.inactivealpha)
 		for _, frame in ipairs(cooldowns) do
@@ -226,7 +231,7 @@ local function SetupIcon(frame, position, alpha, tthrot, active, fl)
 	isactive = active or isactive
 	frame:SetAlpha(alpha)
 	if fl then
-		frame:SetFrameLevel(random(3,5))
+		frame:SetFrameLevel(random(4,7))
 	end
 	SetValue(frame, position)
 end
@@ -323,6 +328,7 @@ end
 do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
 	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
+	local GetSpellName = GetSpellName
 	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
@@ -363,7 +369,7 @@ do  -- cache spells that have a cooldown
 end
 
 do  -- scans spellbook to update cooldowns
-	local selap, srun = 0, nil
+	local selap = 0
 	local spellthrot = CreateFrame("Frame", nil, CoolLine)
 	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
 	local function CheckSpellBook(btype)
@@ -381,7 +387,7 @@ do  -- scans spellbook to update cooldowns
 	local function SpellOnUpdate(this, a1)
 		selap = selap + a1
 		if selap < 0.5 then return end
-		selap, srun = 0, nil
+		selap = 0
 		this:SetScript("OnUpdate", nil)
 		CheckSpellBook(BOOKTYPE_SPELL)
 		if not db.hidepet and HasPetUI() then
@@ -391,8 +397,6 @@ do  -- scans spellbook to update cooldowns
 	-----------------------------------------
 	function CoolLine:SPELL_UPDATE_COOLDOWN()
 	-----------------------------------------
-		if srun then return end
-		srun = true
 		spellthrot:SetScript("OnUpdate", SpellOnUpdate)
 	end
 end
@@ -504,6 +508,34 @@ function CoolLine:UNIT_EXITED_VEHICLE(a1)
 			ClearCooldown(nil, frame.name)
 		end
 	end
+end
+
+local failborder
+----------------------------------------------------
+function CoolLine:UNIT_SPELLCAST_FAILED(unit, spell)
+----------------------------------------------------
+	if unit ~= "player" or #cooldowns == 0 then return end
+	for index, frame in pairs(cooldowns) do
+		if frame.name == spell then
+			if not failborder then
+				failborder = CreateFrame("Frame", nil, CoolLine.border)
+				failborder:SetBackdrop(iconback)
+				failborder:SetBackdropColor(1, 0, 0, 0.9)
+				failborder:Hide()
+				failborder:SetScript("OnUpdate", function(this, a1)
+					this.alp = this.alp - a1
+					if this.alp < 0 then return this:Hide() end
+					this:SetAlpha(this.alp > 1 and 1 or this.alp)
+				end)
+			end
+			failborder.alp = 1.2
+			failborder:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
+			failborder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
+			failborder:Show()
+			break
+		end
+	end
+
 end
 
 
@@ -677,6 +709,7 @@ function ShowOptions(a1)
 				AddList(lvl, "Active Opacity", "activealpha")
 				AddToggle(lvl, "Vertical", "vertical")
 				AddToggle(lvl, "Reverse", "reverse")
+				AddToggle(lvl, "Disable Cast Fail", "hidefail")
 				AddToggle(lvl, "Disable Equipped", "hideinv")
 				AddToggle(lvl, "Disable Bags", "hidebag")
 				AddToggle(lvl, "Disable Pet", "hidepet")
