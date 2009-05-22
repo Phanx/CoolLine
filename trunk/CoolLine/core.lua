@@ -116,9 +116,18 @@ function CoolLine:ADDON_LOADED(a1)
 				fs:SetJustifyH("CENTER")
 				just = db.reverse and ((just == "LEFT" and "TOP") or "BOTTOM") or ((just == "LEFT" and "BOTTOM") or "TOP")
 			elseif db.reverse then
-				just = (just == "LEFT" and "RIGHT") or "LEFT"
+				if just == "LEFT" then
+					just, offset = "RIGHT", offset + 1
+				else
+					just, offset = "LEFT", offset - 1
+				end
 				fs:SetJustifyH(just)
 			else
+				if just == "LEFT" then
+					offset = offset + 1
+				else
+					offset = offset - 1
+				end
 				fs:SetJustifyH(just)
 			end
 		else

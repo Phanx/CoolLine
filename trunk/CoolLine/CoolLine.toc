@@ -2,7 +2,7 @@
 ## Title: CoolLine
 ## Notes: Shows cooldowns on a single bar.
 ## Author: TotalPackage
-## Version: 3.1.002
+## Version: 3.1.003
 
 ## SavedVariables: CoolLineDB
 
