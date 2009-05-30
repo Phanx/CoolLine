@@ -235,10 +235,9 @@ local function ClearCooldown(f, name)
 		end
 	end
 end
-local function SetupIcon(frame, position, alpha, tthrot, active, fl)
+local function SetupIcon(frame, position, tthrot, active, fl)
 	throt = (throt < tthrot and throt) or tthrot
 	isactive = active or isactive
-	frame:SetAlpha(alpha)
 	if fl then
 		frame:SetFrameLevel(random(4,7))
 	end
@@ -265,33 +264,33 @@ local function OnUpdate(this, a1)
 	for name, frame in pairs(cooldowns) do
 		local remain = frame.endtime - ctime
 		if remain < 30 then
-			local alpha = 1 - remain * 0.0166  -- 1 - remain / 60
 			if remain > 10 then
-				SetupIcon(frame, section * (remain + 30) * 0.05, alpha, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
+				SetupIcon(frame, section * (remain + 30) * 0.05, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
 			elseif remain > 1 then
-				SetupIcon(frame, section * (remain + 8) * 0.11, alpha, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
+				SetupIcon(frame, section * (remain + 8) * 0.11, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
 			elseif remain > 0.3 then
-				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
+				SetupIcon(frame, section * remain, 0, true, dofl)
 			elseif remain > 0 then
 				local size = iconsize * (0.6 - remain) * 3.33  -- iconsize + iconsize * (0.3 - remain) / 0.3
 				frame:SetWidth(size)
 				frame:SetHeight(size)
-				SetupIcon(frame, section * remain, alpha, 0, true, dofl)
-			elseif remain > -1.3 then
-				SetupIcon(frame, 0, 1 + remain * 0.769, 0, true, dofl)  -- 1 + remain/1.3
+				SetupIcon(frame, section * remain, 0, true, dofl)
+			elseif remain > -1.2 then
+				SetupIcon(frame, 0, 0, true, dofl)
+				frame:SetAlpha(1 + remain * 0.833)  -- fades 1 + remain/1.2
 			else
 				throt = (throt < 0.2 and throt) or 0.2
 				isactive = true
 				ClearCooldown(frame)
 			end
 		elseif remain < 60 then
-			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.5, 0.15, true, dofl)  -- 3 + (remain - 30) / 30
+			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.15, true, dofl)  -- 3 + (remain - 30) / 30
 		elseif remain < 180 then
-			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.4, 0.3, true, dofl)  -- 4 + (remain - 60) / 120
+			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.3, true, dofl)  -- 4 + (remain - 60) / 120
 		elseif remain < 600 then
-			SetupIcon(frame, section * (remain + 1920) * 0.00238, 0.4, 1.5, true, dofl)  -- 5 + (remain - 180) / 420
+			SetupIcon(frame, section * (remain + 1920) * 0.00238, 1.5, true, dofl)  -- 5 + (remain - 180) / 420
 		else
-			SetupIcon(frame, 6 * section, 0, 1.5, false, dofl)
+			SetupIcon(frame, 6 * section, 1.5, false, dofl)
 		end
 	end
 	if not isactive and not CoolLine.unlock then
@@ -322,6 +321,7 @@ local function NewCooldown(name, icon, endtime, isplayer)
 	end
 	f:SetWidth(iconsize)
 	f:SetHeight(iconsize)
+	f:SetAlpha(1)
 	f.name = name
 	f.endtime = endtime
 	f.icon:SetTexture(icon)
