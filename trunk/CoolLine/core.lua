@@ -170,8 +170,8 @@ function CoolLine:ADDON_LOADED(a1)
 		tick10 = createfs(tick10, "10", section * 2)
 		tick30 = createfs(tick30, "30", section * 3)
 		tick60 = createfs(tick60, "60", section * 4)
-		tick120 = createfs(tick120, "3m", section * 5)
-		tick300 = createfs(tick300, "9m", section * 6, "RIGHT")
+		tick120 = createfs(tick120, "2m", section * 5)
+		tick300 = createfs(tick300, "6m", section * 6, "RIGHT")
 		
 		if db.hidepet then
 			self:UnregisterEvent("UNIT_PET")
@@ -265,7 +265,7 @@ local function OnUpdate(this, a1, ctime, dofl)
 		local remain = frame.endtime - ctime
 		if remain < 10 then
 			if remain > 1 then
-				SetupIcon(frame, section * (remain + 8) * 0.11, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
+				SetupIcon(frame, section * (remain + 8) * 0.111, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
 			elseif remain > 0.3 then
 				SetupIcon(frame, section * remain, 0, true, dofl)
 			elseif remain > 0 then
@@ -282,13 +282,13 @@ local function OnUpdate(this, a1, ctime, dofl)
 				ClearCooldown(frame)
 			end
 		elseif remain < 30 then
-			SetupIcon(frame, section * (remain + 30) * 0.05, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
+			SetupIcon(frame, section * (remain + 30) * 0.05, remain > 11 and 0.06 or 0.02, true, dofl)  -- 2 + (remain - 10) / 20
 		elseif remain < 60 then
-			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.12, true, dofl)  -- 3 + (remain - 30) / 30
-		elseif remain < 180 then
-			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.25, true, dofl)  -- 4 + (remain - 60) / 120
-		elseif remain < 600 then
-			SetupIcon(frame, section * (remain + 1920) * 0.00238, 1.2, true, dofl)  -- 5 + (remain - 180) / 420
+			SetupIcon(frame, section * (remain + 60) * 0.03333, 0.12, true, dofl)  -- 3 + (remain - 30) / 30
+		elseif remain < 120 then
+			SetupIcon(frame, section * (remain + 180) * 0.01666, 0.25, true, dofl)  -- 4 + (remain - 60) / 60
+		elseif remain < 360 then
+			SetupIcon(frame, section * (remain + 1080) * 0.004166, 1.2, true, dofl)  -- 5 + (remain - 120) / 240
 			frame:SetAlpha(1)
 		else
 			SetupIcon(frame, 6 * section, 2, false, dofl)
@@ -323,7 +323,7 @@ local function NewCooldown(name, icon, endtime, isplayer)
 	local ctime = GetTime()
 	f:SetWidth(iconsize)
 	f:SetHeight(iconsize)
-	f:SetAlpha((endtime - ctime > 600) and 0.4 or 1)
+	f:SetAlpha((endtime - ctime > 360) and 0.6 or 1)
 	f.name, f.endtime, f.isplayer = name, endtime, isplayer
 	f.icon:SetTexture(icon)
 	local c = db[isplayer and "spellcolor" or "nospellcolor"]
