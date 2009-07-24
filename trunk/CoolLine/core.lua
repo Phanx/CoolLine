@@ -45,7 +45,7 @@ function CoolLine:ADDON_LOADED(a1)
 	db = CoolLineDB
 	if db.dbinit ~= 1 then
 		db.dbinit = 1
-		for k,v in pairs({
+		for k, v in pairs({
 			w = 360, h = 18, x = 0, y = -240,
 			statusbar = "Blizzard",
 			bgcolor = { r = 0, g = 0, b = 0, a = 0.6, },
@@ -159,7 +159,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
 		
 		self.overlay = self.overlay or CreateFrame("Frame", nil, self.border)
-		self.overlay:SetFrameLevel(8)
+		self.overlay:SetFrameLevel(11)
 
 		section = (db.vertical and db.h or db.w) / 6
 		iconsize = db.vertical and db.w or db.h
@@ -239,11 +239,11 @@ local function SetupIcon(frame, position, tthrot, active, fl)
 	throt = (throt < tthrot and throt) or tthrot
 	isactive = active or isactive
 	if fl then
-		frame:SetFrameLevel(random(4,7))
+		frame:SetFrameLevel(random(1,4) * 2 + 2)
 	end
 	SetValue(frame, position)
 end
-local function OnUpdate(this, a1)
+local function OnUpdate(this, a1, ctime, dofl)
 	elapsed = elapsed + a1
 	if elapsed < throt then return end
 	elapsed = 0
@@ -256,41 +256,42 @@ local function OnUpdate(this, a1)
 		return
 	end
 	
-	local dofl, ctime = nil, GetTime()
+	ctime = ctime or GetTime()
 	if ctime > ptime then
 		dofl, ptime = true, ctime + 0.4
 	end
 	isactive, throt = false, 1.5
-	for name, frame in pairs(cooldowns) do
+	for index, frame in pairs(cooldowns) do
 		local remain = frame.endtime - ctime
-		if remain < 30 then
-			if remain > 10 then
-				SetupIcon(frame, section * (remain + 30) * 0.05, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
-			elseif remain > 1 then
+		if remain < 10 then
+			if remain > 1 then
 				SetupIcon(frame, section * (remain + 8) * 0.11, 0.03, true, dofl)  -- 1 + (remain - 1) / 9
 			elseif remain > 0.3 then
 				SetupIcon(frame, section * remain, 0, true, dofl)
 			elseif remain > 0 then
-				local size = iconsize * (0.6 - remain) * 3.33  -- iconsize + iconsize * (0.3 - remain) / 0.3
+				local size = iconsize * (0.5 - remain) * 5  -- iconsize + iconsize * (0.3 - remain) / 0.2
 				frame:SetWidth(size)
 				frame:SetHeight(size)
 				SetupIcon(frame, section * remain, 0, true, dofl)
-			elseif remain > -1.2 then
+			elseif remain > -1 then
 				SetupIcon(frame, 0, 0, true, dofl)
-				frame:SetAlpha(1 + remain * 0.833)  -- fades 1 + remain/1.2
+				frame:SetAlpha(1 + remain)  -- fades
 			else
 				throt = (throt < 0.2 and throt) or 0.2
 				isactive = true
 				ClearCooldown(frame)
 			end
+		elseif remain < 30 then
+			SetupIcon(frame, section * (remain + 30) * 0.05, 0.06, true, dofl)  -- 2 + (remain - 10) / 20
 		elseif remain < 60 then
-			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.15, true, dofl)  -- 3 + (remain - 30) / 30
+			SetupIcon(frame, section * (remain + 60) * 0.0333, 0.12, true, dofl)  -- 3 + (remain - 30) / 30
 		elseif remain < 180 then
-			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.3, true, dofl)  -- 4 + (remain - 60) / 120
+			SetupIcon(frame, section * (remain + 420) * 0.00833, 0.25, true, dofl)  -- 4 + (remain - 60) / 120
 		elseif remain < 600 then
-			SetupIcon(frame, section * (remain + 1920) * 0.00238, 1.5, true, dofl)  -- 5 + (remain - 180) / 420
+			SetupIcon(frame, section * (remain + 1920) * 0.00238, 1.2, true, dofl)  -- 5 + (remain - 180) / 420
+			frame:SetAlpha(1)
 		else
-			SetupIcon(frame, 6 * section, 1.5, false, dofl)
+			SetupIcon(frame, 6 * section, 2, false, dofl)
 		end
 	end
 	if not isactive and not CoolLine.unlock then
@@ -303,7 +304,7 @@ local function NewCooldown(name, icon, endtime, isplayer)
 		if frame.name == name and frame.isplayer == isplayer then
 			f = frame
 			break
-		elseif frame.endtime + 0.1 > endtime and frame.endtime - 0.1 < endtime then
+		elseif frame.endtime == endtime then
 			return
 		end
 	end
@@ -319,19 +320,18 @@ local function NewCooldown(name, icon, endtime, isplayer)
 		end
 		tinsert(cooldowns, f)
 	end
+	local ctime = GetTime()
 	f:SetWidth(iconsize)
 	f:SetHeight(iconsize)
-	f:SetAlpha(1)
-	f.name = name
-	f.endtime = endtime
+	f:SetAlpha((endtime - ctime > 600) and 0.4 or 1)
+	f.name, f.endtime, f.isplayer = name, endtime, isplayer
 	f.icon:SetTexture(icon)
-	f.isplayer = isplayer
 	local c = db[isplayer and "spellcolor" or "nospellcolor"]
 	f:SetBackdropColor(c.r, c.g, c.b, c.a)
 	f:Show()
 	self:SetScript("OnUpdate", OnUpdate)
 	self:SetAlpha(db.activealpha)
-	OnUpdate(self, 2)
+	OnUpdate(self, 2, ctime)
 end
 
 do  -- cache spells that have a cooldown
@@ -349,9 +349,7 @@ do  -- cache spells that have a cooldown
 	local function CacheBook(btype)
 		local name, last
 		local sb = spells[btype]
-		local i = 0
-		while true do
-			i = i + 1
+		for i = 1, 500, 1 do
 			name = GetSpellName(i, btype)
 			if not name then break end
 			if name ~= last then
@@ -377,7 +375,7 @@ do  -- cache spells that have a cooldown
 	end
 end
 
-do  -- scans spellbook to update cooldowns
+do  -- scans spellbook to update cooldowns, throttled since the event fires a lot
 	local selap = 0
 	local spellthrot = CreateFrame("Frame", nil, CoolLine)
 	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
@@ -393,20 +391,21 @@ do  -- scans spellbook to update cooldowns
 			end
 		end
 	end
-	local function SpellOnUpdate(this, a1)
+	spellthrot:SetScript("OnUpdate", function(this, a1)
 		selap = selap + a1
 		if selap < 0.5 then return end
 		selap = 0
-		this:SetScript("OnUpdate", nil)
+		this:Hide()
 		CheckSpellBook(BOOKTYPE_SPELL)
 		if not db.hidepet and HasPetUI() then
 			CheckSpellBook(BOOKTYPE_PET)
 		end
-	end
+	end)
+	spellthrot:Hide()
 	-----------------------------------------
 	function CoolLine:SPELL_UPDATE_COOLDOWN()
 	-----------------------------------------
-		spellthrot:SetScript("OnUpdate", SpellOnUpdate)
+		spellthrot:Show()
 	end
 end
 
@@ -513,7 +512,7 @@ function CoolLine:UNIT_EXITED_VEHICLE(a1)
 	if a1 ~= "player" then return end
 	self:UnregisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 	for index, frame in ipairs(cooldowns) do
-		if strfind(frame.name, "vhcle") then
+		if strmatch(frame.name, "vhcle") then
 			ClearCooldown(nil, frame.name)
 		end
 	end
@@ -552,7 +551,7 @@ local CoolLineDD
 local info = { }
 function ShowOptions(a1)
 	if type(a1) == "string" and a1 ~= "" and a1 ~= "menu" and a1 ~= "options" and a1 ~= "help" then
-		if strfind(a1, "|H") then
+		if strmatch(a1, "|H") then
 			a1 = strmatch(a1, "|h%[(.+)%]|h")
 		end
 		if a1 then
@@ -737,7 +736,10 @@ function ShowOptions(a1)
 						end	
 					end
 				elseif sub == "fontsize" then
-					for i = 6, 28, 2 do
+					for i = 5, 12, 1 do
+						AddSelect(lvl, i, "fontsize", i)
+					end
+					for i = 14, 28, 2 do
 						AddSelect(lvl, i, "fontsize", i)
 					end
 				elseif sub == "inactivealpha" or sub == "activealpha" then
@@ -750,5 +752,4 @@ function ShowOptions(a1)
 	end
 	ToggleDropDownMenu(1, nil, CoolLineDD, "cursor")
 end
-
 
