@@ -110,24 +110,19 @@ function CoolLine:ADDON_LOADED(a1)
 		fs:SetText(text)
 		fs:SetWidth(db.fontsize * 3)
 		fs:SetHeight(db.fontsize + 2)
+		fs:SetShadowColor(db.bgcolor.r, db.bgcolor.g, db.bgcolor.b, db.bgcolor.a)
+		fs:SetShadowOffset(1, -1)
 		if just then
 			fs:ClearAllPoints()
 			if db.vertical then
 				fs:SetJustifyH("CENTER")
 				just = db.reverse and ((just == "LEFT" and "TOP") or "BOTTOM") or ((just == "LEFT" and "BOTTOM") or "TOP")
 			elseif db.reverse then
-				if just == "LEFT" then
-					just, offset = "RIGHT", offset + 1
-				else
-					just, offset = "LEFT", offset - 1
-				end
+				just = (just == "LEFT" and "RIGHT") or "LEFT"
+				offset = offset + ((just == "LEFT" and 1) or -1)
 				fs:SetJustifyH(just)
 			else
-				if just == "LEFT" then
-					offset = offset + 1
-				else
-					offset = offset - 1
-				end
+				offset = offset + ((just == "LEFT" and 1) or -1)
 				fs:SetJustifyH(just)
 			end
 		else
@@ -273,9 +268,9 @@ local function OnUpdate(this, a1, ctime, dofl)
 				frame:SetWidth(size)
 				frame:SetHeight(size)
 				SetupIcon(frame, section * remain, 0, true, dofl)
-			elseif remain > -1 then
+			elseif remain > -0.5 then
 				SetupIcon(frame, 0, 0, true, dofl)
-				frame:SetAlpha(1 + remain)  -- fades
+				frame:SetAlpha(1 + remain * 2)  -- fades
 			else
 				throt = (throt < 0.2 and throt) or 0.2
 				isactive = true
@@ -680,8 +675,8 @@ function ShowOptions(a1)
 			info.arg1 = arg1
 			info.func = SetSelect
 			info.value = value
-			if tonumber(value) then
-				if floor(100 * tonumber(value)) == floor(100 * tonumber(db[arg1] or -1)) then
+			if tonumber(value) and tonumber(db[arg1] or "blah") then
+				if floor(100 * tonumber(value)) == floor(100 * tonumber(db[arg1])) then
 					info.checked = true
 				end
 			else
