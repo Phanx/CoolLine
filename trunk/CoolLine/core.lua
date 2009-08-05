@@ -21,7 +21,7 @@ local BOOKTYPE_SPELL, BOOKTYPE_PET = BOOKTYPE_SPELL, BOOKTYPE_PET
 local spells = { [BOOKTYPE_SPELL] = { }, [BOOKTYPE_PET] = { }, }
 local frames, cooldowns = { }, { }
 
-local SetValue, updatelook, createfs, ShowOptions
+local SetValue, updatelook, createfs, ShowOptions, RuneCheck
 local function SetValueH(this, v, just)
 	this:SetPoint(just or "CENTER", self, "LEFT", v, 0)
 end
@@ -66,6 +66,32 @@ function CoolLine:ADDON_LOADED(a1)
 		end
 	end
 	block = db.block
+	
+	if select(2, UnitClass("player")) == "DEATHKNIGHT" then
+		local runecd = {  -- fix by NeoSyrex
+			[GetSpellInfo(50977) or "Death Gate"] = 60,
+			[GetSpellInfo(43265) or "Death and Decay"] = 15,
+			[GetSpellInfo(48263) or "Frost Presence"] = 1,
+			[GetSpellInfo(48266) or "Blood Presence"] = 1,
+			[GetSpellInfo(48265) or "Unholy Presence"] = 1, 
+			[GetSpellInfo(42650) or "Army of the Dead"] = 600,
+			[GetSpellInfo(49222) or "Bone Shield"] = 60,
+			[GetSpellInfo(47476) or "Strangulate"] = 100,
+			[GetSpellInfo(51052) or "Anti-Magic Zone"] = 120,
+			[GetSpellInfo(63560) or "Ghoul Frenzy"] = 10,
+			[GetSpellInfo(49184) or "Howling Blast"] = 8,
+			[GetSpellInfo(51271) or "Unbreakable Armor"] = 120,
+			[GetSpellInfo(55233) or "Vampiric Blood"] = 120,
+			[GetSpellInfo(49005) or "Mark of Blood"] = 180,
+			[GetSpellInfo(48982) or "Rune Tap"] = 30,
+		}
+		RuneCheck = function(name, duration)
+			local rc = runecd[name]
+			if not rc or (rc <= duration and (rc > 10 or rc >= duration)) then
+				return true
+			end
+		end
+	end
 	
 	SlashCmdList.COOLLINE = ShowOptions
 	SLASH_COOLLINE1 = "/coolline"
@@ -378,7 +404,7 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 		for name, id in pairs(spells[btype]) do
 			local start, duration, enable = GetSpellCooldown(id, btype)
 			if enable == 1 and start > 0 then
-				if duration > 2.5 and not block[name] then
+				if duration > 2.5 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
 					NewCooldown(name, GetSpellTexture(id, btype), start + duration, btype == BOOKTYPE_SPELL)
 				end
 			else
