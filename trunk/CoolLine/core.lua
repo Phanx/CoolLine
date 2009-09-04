@@ -354,6 +354,7 @@ local function NewCooldown(name, icon, endtime, isplayer)
 	self:SetAlpha(db.activealpha)
 	OnUpdate(self, 2, ctime)
 end
+CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 
 do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
@@ -568,7 +569,7 @@ function CoolLine:UNIT_SPELLCAST_FAILED(unit, spell)
 end
 
 
-local CoolLineDD
+local CoolLineDD, Set
 local info = { }
 function ShowOptions(a1)
 	if type(a1) == "string" and a1 ~= "" and a1 ~= "menu" and a1 ~= "options" and a1 ~= "help" then
@@ -590,7 +591,7 @@ function ShowOptions(a1)
 		CoolLineDD = CreateFrame("Frame", "CoolLineDD", UIParent)
 		CoolLineDD.displayMode = "MENU"
 
-		local function Set(b, a1)
+		Set = function(b, a1)
 			if a1 == "unlock" then
 				if not CoolLine.resizer then
 					CoolLine:SetMovable(true)
@@ -772,5 +773,22 @@ function ShowOptions(a1)
 		end
 	end
 	ToggleDropDownMenu(1, nil, CoolLineDD, "cursor")
+end
+
+CONFIGMODE_CALLBACKS = CONFIGMODE_CALLBACKS or {}
+CONFIGMODE_CALLBACKS.CoolLine = function(action, mode)
+	if action == "ON" then
+		if not CoolLineDD then
+			ShowOptions()
+			ToggleDropDownMenu(1, nil, CoolLineDD, "cursor")
+		end
+		if CoolLineDD and not CoolLine.unlock then
+			Set(nil, "unlock")
+		end
+	elseif action == "OFF" then
+		if CoolLineDD and CoolLine.unlock then
+			Set(nil, "unlock")
+		end
+	end
 end
 
