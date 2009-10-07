@@ -42,7 +42,13 @@ function CoolLine:ADDON_LOADED(a1)
 	self.ADDON_LOADED = nil
 	
 	CoolLineDB = CoolLineDB or { }
-	db = CoolLineDB
+	if CoolLineDB.perchar then
+		CoolLineCharDB = CoolLineCharDB or CoolLineDB
+		db = CoolLineCharDB
+	else
+		CoolLineCharDB = nil
+		db = CoolLineDB
+	end
 	if db.dbinit ~= 1 then
 		db.dbinit = 1
 		for k, v in pairs({
@@ -69,21 +75,21 @@ function CoolLine:ADDON_LOADED(a1)
 	
 	if select(2, UnitClass("player")) == "DEATHKNIGHT" then
 		local runecd = {  -- fix by NeoSyrex
-			[GetSpellInfo(50977) or "Death Gate"] = 60,
-			[GetSpellInfo(43265) or "Death and Decay"] = 15,
+			[GetSpellInfo(50977) or "Death Gate"] = 11,
+			[GetSpellInfo(43265) or "Death and Decay"] = 11,
 			[GetSpellInfo(48263) or "Frost Presence"] = 1,
 			[GetSpellInfo(48266) or "Blood Presence"] = 1,
 			[GetSpellInfo(48265) or "Unholy Presence"] = 1, 
-			[GetSpellInfo(42650) or "Army of the Dead"] = 600,
-			[GetSpellInfo(49222) or "Bone Shield"] = 60,
-			[GetSpellInfo(47476) or "Strangulate"] = 100,
-			[GetSpellInfo(51052) or "Anti-Magic Zone"] = 120,
+			[GetSpellInfo(42650) or "Army of the Dead"] = 11,
+			[GetSpellInfo(49222) or "Bone Shield"] = 11,
+			[GetSpellInfo(47476) or "Strangulate"] = 11,
+			[GetSpellInfo(51052) or "Anti-Magic Zone"] = 11,
 			[GetSpellInfo(63560) or "Ghoul Frenzy"] = 10,
 			[GetSpellInfo(49184) or "Howling Blast"] = 8,
-			[GetSpellInfo(51271) or "Unbreakable Armor"] = 120,
-			[GetSpellInfo(55233) or "Vampiric Blood"] = 120,
-			[GetSpellInfo(49005) or "Mark of Blood"] = 180,
-			[GetSpellInfo(48982) or "Rune Tap"] = 30,
+			[GetSpellInfo(51271) or "Unbreakable Armor"] = 11,
+			[GetSpellInfo(55233) or "Vampiric Blood"] = 11,
+			[GetSpellInfo(49005) or "Mark of Blood"] = 11,
+			[GetSpellInfo(48982) or "Rune Tap"] = 11,
 		}
 		RuneCheck = function(name, duration)
 			local rc = runecd[name]
@@ -613,7 +619,7 @@ function ShowOptions(a1)
 					local resize = CoolLine.resizer
 					resize:SetWidth(8)
 					resize:SetHeight(8)
-					resize:SetPoint("BOTTOMRIGHT", CoolLine, "BOTTOMRIGHT", 0, 0)
+					resize:SetPoint("BOTTOMRIGHT", CoolLine, "BOTTOMRIGHT", 2, -2)
 					resize:SetScript("OnMouseDown", function(this) CoolLine:StartSizing("BOTTOMRIGHT") end)
 					resize:SetScript("OnMouseUp", function(this) 
 						CoolLine:StopMovingOrSizing()
@@ -626,6 +632,7 @@ function ShowOptions(a1)
 					CoolLine:EnableMouse(true)
 					CoolLine.resizer:Show()
 					CoolLine:SetAlpha(db.activealpha)
+					print("CoolLine - drag frame to reposition or drag red corner to resize")
 				else
 					CoolLine.unlock = nil
 					CoolLine:EnableMouse(false)
@@ -638,6 +645,14 @@ function ShowOptions(a1)
 					db.w, db.h = ph, pw
 				end
 				db[a1] = not db[a1]
+				if a1 == "perchar" then
+					if db.perchar then
+						CoolLineCharDB = CoolLineCharDB or CoolLineDB
+					else
+						CoolLineCharDB = nil
+					end
+					ReloadUI()
+				end
 				updatelook()
 			end
 		end
@@ -739,10 +754,7 @@ function ShowOptions(a1)
 				AddList(lvl, "Active Opacity", "activealpha")
 				AddToggle(lvl, "Vertical", "vertical")
 				AddToggle(lvl, "Reverse", "reverse")
-				AddToggle(lvl, "Disable Cast Fail", "hidefail")
-				AddToggle(lvl, "Disable Equipped", "hideinv")
-				AddToggle(lvl, "Disable Bags", "hidebag")
-				AddToggle(lvl, "Disable Pet", "hidepet")
+				AddList(lvl, "More", "More")
 				AddToggle(lvl, "Unlock", "unlock")
 			elseif lvl and lvl > 1 then
 				local sub = UIDROPDOWNMENU_MENU_VALUE
@@ -768,6 +780,12 @@ function ShowOptions(a1)
 					for i = 0, 1, 0.1 do
 						AddSelect(lvl, format("%.1f", i), sub, i)
 					end
+				elseif sub == "More" then
+					AddToggle(lvl, "Disable Cast Fail", "hidefail")
+					AddToggle(lvl, "Disable Equipped", "hideinv")
+					AddToggle(lvl, "Disable Bags", "hidebag")
+					AddToggle(lvl, "Disable Pet", "hidepet")
+					AddToggle(lvl, "Save Per Char", "perchar")
 				end
 			end
 		end
