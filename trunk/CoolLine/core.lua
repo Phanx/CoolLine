@@ -410,9 +410,18 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	local function CheckSpellBook(btype)
 		for name, id in pairs(spells[btype]) do
 			local start, duration, enable = GetSpellCooldown(id, btype)
-			if enable == 1 and start > 0 then
-				if duration > 2.5 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
+			if enable == 1 and start > 0 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
+				if duration > 2.5 then
 					NewCooldown(name, GetSpellTexture(id, btype), start + duration, btype == BOOKTYPE_SPELL)
+				else
+					for index, frame in ipairs(cooldowns) do
+						if frame.name == name then
+							if frame.endtime > start + duration + 0.1 then
+								frame.endtime = start + duration
+							end
+							break
+						end
+					end
 				end
 			else
 				ClearCooldown(nil, name)
@@ -421,7 +430,7 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	end
 	spellthrot:SetScript("OnUpdate", function(this, a1)
 		selap = selap + a1
-		if selap < 0.5 then return end
+		if selap < 0.33 then return end
 		selap = 0
 		this:Hide()
 		CheckSpellBook(BOOKTYPE_SPELL)
@@ -553,21 +562,23 @@ function CoolLine:UNIT_SPELLCAST_FAILED(unit, spell)
 	if unit ~= "player" or #cooldowns == 0 then return end
 	for index, frame in pairs(cooldowns) do
 		if frame.name == spell then
-			if not failborder then
-				failborder = CreateFrame("Frame", nil, CoolLine.border)
-				failborder:SetBackdrop(iconback)
-				failborder:SetBackdropColor(1, 0, 0, 0.9)
-				failborder:Hide()
-				failborder:SetScript("OnUpdate", function(this, a1)
-					this.alp = this.alp - a1
-					if this.alp < 0 then return this:Hide() end
-					this:SetAlpha(this.alp > 1 and 1 or this.alp)
-				end)
+			if frame.endtime - GetTime() > 1 then
+				if not failborder then
+					failborder = CreateFrame("Frame", nil, CoolLine.border)
+					failborder:SetBackdrop(iconback)
+					failborder:SetBackdropColor(1, 0, 0, 0.9)
+					failborder:Hide()
+					failborder:SetScript("OnUpdate", function(this, a1)
+						this.alp = this.alp - a1
+						if this.alp < 0 then return this:Hide() end
+						this:SetAlpha(this.alp > 1 and 1 or this.alp)
+					end)
+				end
+				failborder.alp = 1.2
+				failborder:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
+				failborder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
+				failborder:Show()
 			end
-			failborder.alp = 1.2
-			failborder:SetPoint("TOPLEFT", frame, "TOPLEFT", -2, 2)
-			failborder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 2, -2)
-			failborder:Show()
 			break
 		end
 	end
