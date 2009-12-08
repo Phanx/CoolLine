@@ -189,7 +189,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self.overlay:SetFrameLevel(11)
 
 		section = (db.vertical and db.h or db.w) / 6
-		iconsize = db.vertical and db.w or db.h
+		iconsize = ((db.vertical and db.w) or db.h) + (db.iconplus or 0)
 		SetValue = (db.vertical and (db.reverse and SetValueVR or SetValueV)) or (db.reverse and SetValueHR or SetValueH)
 		
 		tick0 = createfs(tick0, "0", 0, "LEFT")
@@ -300,9 +300,9 @@ local function OnUpdate(this, a1, ctime, dofl)
 				frame:SetWidth(size)
 				frame:SetHeight(size)
 				SetupIcon(frame, section * remain, 0, true, dofl)
-			elseif remain > -0.5 then
+			elseif remain > -1 then
 				SetupIcon(frame, 0, 0, true, dofl)
-				frame:SetAlpha(1 + remain * 2)  -- fades
+				frame:SetAlpha(1 + remain)  -- fades
 			else
 				throt = (throt < 0.2 and throt) or 0.2
 				isactive = true
@@ -654,6 +654,9 @@ function ShowOptions(a1)
 				if a1 == "vertical" then
 					local pw, ph = db.w, db.h
 					db.w, db.h = ph, pw
+				elseif a1 == "resetall" then
+					CoolLineCharDB, CoolLineDB = nil, nil
+					return ReloadUI()
 				end
 				db[a1] = not db[a1]
 				if a1 == "perchar" then
@@ -763,8 +766,7 @@ function ShowOptions(a1)
 				AddColor(lvl, "Item/Pet Color", "nospellcolor")
 				AddList(lvl, "Inactive Opacity", "inactivealpha")
 				AddList(lvl, "Active Opacity", "activealpha")
-				AddToggle(lvl, "Vertical", "vertical")
-				AddToggle(lvl, "Reverse", "reverse")
+				AddList(lvl, "Icon Size", "iconplus")
 				AddList(lvl, "More", "More")
 				AddToggle(lvl, "Unlock", "unlock")
 			elseif lvl and lvl > 1 then
@@ -791,12 +793,19 @@ function ShowOptions(a1)
 					for i = 0, 1, 0.1 do
 						AddSelect(lvl, format("%.1f", i), sub, i)
 					end
+				elseif sub == "iconplus" then
+					for i = 0, 24, 2 do
+						AddSelect(lvl, format("+%d", i), sub, i)
+					end
 				elseif sub == "More" then
+					AddToggle(lvl, "Vertical", "vertical")
+					AddToggle(lvl, "Reverse", "reverse")
 					AddToggle(lvl, "Disable Cast Fail", "hidefail")
 					AddToggle(lvl, "Disable Equipped", "hideinv")
 					AddToggle(lvl, "Disable Bags", "hidebag")
 					AddToggle(lvl, "Disable Pet", "hidepet")
 					AddToggle(lvl, "Save Per Char", "perchar")
+					AddToggle(lvl, _G.RESET_TO_DEFAULT, "resetall")
 				end
 			end
 		end
