@@ -134,7 +134,7 @@ function CoolLine:ADDON_LOADED(a1)
 		this:SetScript("OnShow", nil)
 	end)
 	InterfaceOptions_AddCategory(panel)
-	
+
 	createfs = function(f, text, offset, just)
 		local fs = f or self.overlay:CreateFontString(nil, "OVERLAY")
 		fs:SetFont(smed:Fetch("font", db.font), db.fontsize)
@@ -199,7 +199,11 @@ function CoolLine:ADDON_LOADED(a1)
 		tick60 = createfs(tick60, "60", section * 4)
 		tick120 = createfs(tick120, "2m", section * 5)
 		tick300 = createfs(tick300, "6m", section * 6, "RIGHT")
-		
+
+		if not self.cb and (not smed:IsValid("font", db.font) or not smed:IsValid("border", db.border) or not smed:IsValid("statusbar", db.statusbar)) then
+			smed.RegisterCallback(self, "LibSharedMedia_Registered", updatelook)
+			self.cb = true
+		end
 		if db.hidepet then
 			self:UnregisterEvent("UNIT_PET")
 			self:UnregisterEvent("PET_BAR_UPDATE_COOLDOWN")
@@ -223,6 +227,7 @@ function CoolLine:ADDON_LOADED(a1)
 			frame:SetHeight(iconsize)
 		end
 	end
+	
 	if IsLoggedIn() then
 		CoolLine:PLAYER_LOGIN()
 	else
