@@ -5,6 +5,8 @@ self:SetScript("OnEvent", function(this, event, ...)
 end)
 local smed = LibStub("LibSharedMedia-3.0")
 
+local is4 = GetSpellBookItemName and true or false
+
 local _G = getfenv(0)
 local pairs, ipairs = pairs, ipairs
 local tinsert, tremove = tinsert, tremove
@@ -54,7 +56,7 @@ function CoolLine:ADDON_LOADED(a1)
 		for k, v in pairs({
 			w = 360, h = 18, x = 0, y = -240,
 			statusbar = "Blizzard",
-			bgcolor = { r = 0, g = 0, b = 0, a = 0.6, },
+			bgcolor = { r = 0, g = 0, b = 0, a = 0.5, },
 			border = "Blizzard Dialog",
 			bordercolor = { r = 1, g = 1, b = 1, a = 1, },
 			font = "Friz Quadrata TT",
@@ -186,7 +188,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
 		
 		self.overlay = self.overlay or CreateFrame("Frame", nil, self.border)
-		self.overlay:SetFrameLevel(11)
+		self.overlay:SetFrameLevel(24)
 
 		section = (db.vertical and db.h or db.w) / 6
 		iconsize = ((db.vertical and db.w) or db.h) + (db.iconplus or 0)
@@ -227,6 +229,7 @@ function CoolLine:ADDON_LOADED(a1)
 			frame:SetHeight(iconsize)
 		end
 	end
+	CoolLine.updatelook = updatelook
 	
 	if IsLoggedIn() then
 		CoolLine:PLAYER_LOGIN()
@@ -271,7 +274,7 @@ local function SetupIcon(frame, position, tthrot, active, fl)
 	throt = (throt < tthrot and throt) or tthrot
 	isactive = active or isactive
 	if fl then
-		frame:SetFrameLevel(random(1,4) * 2 + 2)
+		frame:SetFrameLevel(random(1,5) * 2 + 2)
 	end
 	SetValue(frame, position)
 end
@@ -370,7 +373,7 @@ CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
 	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
-	local GetSpellName = GetSpellName
+	local GetSpellName = is4 and GetSpellBookItemName or GetSpellName
 	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
@@ -390,7 +393,7 @@ do  -- cache spells that have a cooldown
 				if sb[name] then
 					sb[name] = i
 				else
-					CLTip:SetSpell(i, btype)
+					CLTip[is4 and "SetSpellBookItem" or "SetSpell"](CLTip, i, btype)
 					if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
 						sb[name] = i
 					end
