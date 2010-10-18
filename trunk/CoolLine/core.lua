@@ -217,6 +217,7 @@ function CoolLine:ADDON_LOADED(a1)
 			self:UnregisterEvent("BAG_UPDATE_COOLDOWN")
 		else
 			self:RegisterEvent("BAG_UPDATE_COOLDOWN")
+			self:BAG_UPDATE_COOLDOWN()
 		end
 		if db.hidefail then
 			self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
@@ -252,8 +253,25 @@ function CoolLine:PLAYER_LOGIN()
 	updatelook()
 	self:SPELLS_CHANGED()
 	self:SPELL_UPDATE_COOLDOWN()
-	self:BAG_UPDATE_COOLDOWN()
 	self:SetAlpha((#cooldowns == 0 and db.inactivealpha) or db.activealpha)
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterEvent("PLAYER_LEAVING_WORLD")
+end
+
+-----------------------------------------
+function CoolLine:PLAYER_ENTERING_WORLD()
+-----------------------------------------
+	self:RegisterEvent("SPELLS_CHANGED")
+	self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+	self:SPELLS_CHANGED()
+	self:SPELL_UPDATE_COOLDOWN()
+end
+
+----------------------------------------
+function CoolLine:PLAYER_LEAVING_WORLD()
+----------------------------------------
+	self:UnregisterEvent("SPELLS_CHANGED")
+	self:UnregisterEvent("SPELL_UPDATE_COOLDOWN")
 end
 
 local iconback = { bgFile="Interface\\AddOns\\CoolLine\\backdrop.tga" }
