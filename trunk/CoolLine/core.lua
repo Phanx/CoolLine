@@ -5,8 +5,6 @@ self:SetScript("OnEvent", function(this, event, ...)
 end)
 local smed = LibStub("LibSharedMedia-3.0")
 
-local is4 = GetSpellBookItemName and true or false
-
 local _G = getfenv(0)
 local pairs, ipairs = pairs, ipairs
 local tinsert, tremove = tinsert, tremove
@@ -391,7 +389,11 @@ CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
 	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
-	local GetSpellName = is4 and GetSpellBookItemName or GetSpellName
+	local GetSpellBookItemName, GetSpellBookItemInfo = GetSpellBookItemName, GetSpellBookItemInfo
+	local specialspells = {
+		[GetSpellInfo(87151) or "blah"] = true,  -- Archangel
+		[GetSpellInfo(14751) or "blah"] = "chakra",  -- Chakra
+	}
 	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
@@ -404,16 +406,24 @@ do  -- cache spells that have a cooldown
 		local name, last
 		local sb = spells[btype]
 		for i = 1, 500, 1 do
-			name = GetSpellName(i, btype)
+			name = GetSpellBookItemName(i, btype)
 			if not name then break end
 			if name ~= last then
+				local stype, id = GetSpellBookItemInfo(i, btype)
 				last = name
 				if sb[name] then
-					sb[name] = i
+					sb[name] = id
+				elseif specialspells[name] then
+					sb[name] = id
+					if specialspells[name] == "chakra" then
+						sb[GetSpellInfo(88684) or "blah"] = 88684  -- Holy Word: Serenity
+						sb[GetSpellInfo(88682) or "blah"] = 88682  -- Holy Word: Aspire
+						sb[GetSpellInfo(88685) or "blah"] = 88685  -- Holy Word: Sanctuary
+					end
 				else
-					CLTip[is4 and "SetSpellBookItem" or "SetSpell"](CLTip, i, btype)
+					CLTip:SetSpellBookItem(i, btype)
 					if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
-						sb[name] = i
+						sb[name] = id
 					end
 				end
 			end
@@ -435,10 +445,11 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
 	local function CheckSpellBook(btype)
 		for name, id in pairs(spells[btype]) do
-			local start, duration, enable = GetSpellCooldown(id, btype)
+			local start, duration, enable = GetSpellCooldown(id)
 			if enable == 1 and start > 0 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
 				if duration > 2.5 then
-					NewCooldown(name, GetSpellTexture(id, btype), start + duration, btype == BOOKTYPE_SPELL)
+					local _, _, texture = GetSpellInfo(id)
+					NewCooldown(name, texture, start + duration, btype == BOOKTYPE_SPELL)
 				else
 					for index, frame in ipairs(cooldowns) do
 						if frame.name == name then
@@ -751,6 +762,7 @@ function ShowOptions(a1)
 			info.value = value
 			info.hasArrow = true
 			info.func = HideCheck
+			info.notCheckable = 1
 			AddButton(lvl, text, 1)
 		end
 		local function AddSelect(lvl, text, arg1, value)
@@ -775,11 +787,13 @@ function ShowOptions(a1)
 			info.swatchFunc, info.opacityFunc, info.cancelFunc = SetColor, SetColor, SetColor
 			info.value = value
 			info.func = UIDropDownMenuButton_OpenColorPicker
+			info.notCheckable = 1
 			AddButton(lvl, text, nil)
 		end
 		CoolLineDD.initialize = function(self, lvl)
 			if lvl == 1 then
 				info.isTitle = true
+				info.notCheckable = 1
 				AddButton(lvl, "|cff88ffffCool|r|cff88ff88Line|r")
 				AddList(lvl, "Texture", "statusbar")
 				AddColor(lvl, "Texture Color", "bgcolor")
