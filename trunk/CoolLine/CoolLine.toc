@@ -1,8 +1,8 @@
-## Interface: 40000
+## Interface: 40100
 ## Title: CoolLine
 ## Notes: Shows cooldowns on a single bar.
 ## Author: TotalPackage
-## Version: 4.0.003
+## Version: 4.1.001
 
 ## SavedVariables: CoolLineDB
 ## SavedVariablesPerCharacter: CoolLineCharDB
