@@ -783,7 +783,7 @@ function ShowOptions(a1)
 			if not dbc then return end
 			info.hasColorSwatch = true
 			info.hasOpacity = 1
-			info.r, info.g, info.b, info.opacity = dbc.r, dbc.g, dbc.b, 1 - dbc.a
+			info.r, info.g, info.b, info.opacity = dbc.r, dbc.g, dbc.b, 1 - (dbc.a or 0)
 			info.swatchFunc, info.opacityFunc, info.cancelFunc = SetColor, SetColor, SetColor
 			info.value = value
 			info.func = UIDropDownMenuButton_OpenColorPicker
