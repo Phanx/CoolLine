@@ -12,14 +12,15 @@ local GetTime = GetTime
 local random = math.random
 local strmatch = strmatch
 local UnitExists, HasPetUI = UnitExists, HasPetUI
+local GetSpellInfo = GetSpellInfo
 
 local db, block
 local backdrop = { edgeSize=16, }
 local section, iconsize = 0, 0
-local tick0, tick1, tick10, tick30, tick60, tick120, tick300
+local tick0, tick1, tick3, tick10, tick30, tick120, tick300
 local BOOKTYPE_SPELL, BOOKTYPE_PET = BOOKTYPE_SPELL, BOOKTYPE_PET
 local spells = { [BOOKTYPE_SPELL] = { }, [BOOKTYPE_PET] = { }, }
-local frames, cooldowns = { }, { }
+local frames, cooldowns, specialspells = { }, { }, { }
 
 local SetValue, updatelook, createfs, ShowOptions, RuneCheck
 local function SetValueH(this, v, just)
@@ -97,6 +98,17 @@ function CoolLine:ADDON_LOADED(a1)
 				return true
 			end
 		end
+	end
+	if select(2, UnitClass("player")) == "PRIEST" then
+		specialspells = {
+			[GetSpellInfo(87151) or "blah"] = 87151,  -- Archangel
+			[GetSpellInfo(14751) or "blah"] = 14751,  -- Chakra
+			[GetSpellInfo(81209) or "blah"] = 81209,  -- Chakra
+			[GetSpellInfo(88684) or "blah"] = 88684,  -- Holy Word: Serenity
+			[GetSpellInfo(88682) or "blah"] = 88682,  -- Holy Word: Aspire
+			[GetSpellInfo(88685) or "blah"] = 88685,  -- Holy Word: Sanctuary
+			[GetSpellInfo(88625) or "blah"] = 88625  -- Holy Word: Chastise
+		}
 	end
 	
 	SlashCmdList.COOLLINE = ShowOptions
@@ -194,9 +206,9 @@ function CoolLine:ADDON_LOADED(a1)
 		
 		tick0 = createfs(tick0, "0", 0, "LEFT")
 		tick1 = createfs(tick1, "1", section)
-		tick10 = createfs(tick10, "3", section * 2)
-		tick30 = createfs(tick30, "10", section * 3)
-		tick60 = createfs(tick60, "60", section * 4)
+		tick3 = createfs(tick3, "3", section * 2)
+		tick10 = createfs(tick10, "10", section * 3)
+		tick30 = createfs(tick30, "30", section * 4)
 		tick120 = createfs(tick120, "2m", section * 5)
 		tick300 = createfs(tick300, "6m", section * 6, "RIGHT")
 
@@ -333,13 +345,13 @@ local function OnUpdate(this, a1, ctime, dofl)
 				ClearCooldown(frame)
 			end
 		elseif remain < 10 then
-			SetupIcon(frame, section * (remain + 11) * 0.143, remain > 4 and 0.05 or 0.02, true, dofl)  -- 2 + (remain - 3) / 7
-		elseif remain < 60 then
-			SetupIcon(frame, section * (remain + 140) * 0.02, 0.12, true, dofl)  -- 3 + (remain - 10) / 50
+			SetupIcon(frame, section * (remain + 11) * 0.14286, remain > 4 and 0.05 or 0.02, true, dofl)  -- 2 + (remain - 3) / 7
+		elseif remain < 30 then
+			SetupIcon(frame, section * (remain + 50) * 0.05, 0.09, true, dofl)  -- 3 + (remain - 10) / 20
 		elseif remain < 120 then
-			SetupIcon(frame, section * (remain + 180) * 0.01666, 0.25, true, dofl)  -- 4 + (remain - 60) / 60
+			SetupIcon(frame, section * (remain + 330) * 0.011111, 0.21, true, dofl)  -- 4 + (remain - 30) / 90
 		elseif remain < 360 then
-			SetupIcon(frame, section * (remain + 1080) * 0.004166, 1.2, true, dofl)  -- 5 + (remain - 120) / 240
+			SetupIcon(frame, section * (remain + 1080) * 0.0041667, 1.2, true, dofl)  -- 5 + (remain - 120) / 240
 			frame:SetAlpha(1)
 		else
 			SetupIcon(frame, 6 * section, 2, false, dofl)
@@ -390,10 +402,6 @@ do  -- cache spells that have a cooldown
 	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
 	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
 	local GetSpellBookItemName, GetSpellBookItemInfo = GetSpellBookItemName, GetSpellBookItemInfo
-	local specialspells = {
-		[GetSpellInfo(87151) or "blah"] = true,  -- Archangel
-		[GetSpellInfo(14751) or "blah"] = "chakra",  -- Chakra
-	}
 	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
@@ -412,18 +420,11 @@ do  -- cache spells that have a cooldown
 				local stype, id = GetSpellBookItemInfo(i, btype)
 				last = name
 				if sb[name] then
-					sb[name] = id
-				elseif specialspells[name] then
-					sb[name] = id
-					if specialspells[name] == "chakra" then
-						sb[GetSpellInfo(88684) or "blah"] = 88684  -- Holy Word: Serenity
-						sb[GetSpellInfo(88682) or "blah"] = 88682  -- Holy Word: Aspire
-						sb[GetSpellInfo(88685) or "blah"] = 88685  -- Holy Word: Sanctuary
-					end
+					sb[name] = specialspells[name] or id
 				else
 					CLTip:SetSpellBookItem(i, btype)
 					if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
-						sb[name] = id
+						sb[name] = specialspells[name] or id
 					end
 				end
 			end
@@ -467,7 +468,7 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	end
 	spellthrot:SetScript("OnUpdate", function(this, a1)
 		selap = selap + a1
-		if selap < 0.33 then return end
+		if selap < 0.3 then return end
 		selap = 0
 		this:Hide()
 		CheckSpellBook(BOOKTYPE_SPELL)
