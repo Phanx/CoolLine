@@ -347,9 +347,9 @@ local function OnUpdate(this, a1, ctime, dofl)
 		elseif remain < 10 then
 			SetupIcon(frame, section * (remain + 11) * 0.14286, remain > 4 and 0.05 or 0.02, true, dofl)  -- 2 + (remain - 3) / 7
 		elseif remain < 30 then
-			SetupIcon(frame, section * (remain + 50) * 0.05, 0.09, true, dofl)  -- 3 + (remain - 10) / 20
+			SetupIcon(frame, section * (remain + 50) * 0.05, 0.06, true, dofl)  -- 3 + (remain - 10) / 20
 		elseif remain < 120 then
-			SetupIcon(frame, section * (remain + 330) * 0.011111, 0.21, true, dofl)  -- 4 + (remain - 30) / 90
+			SetupIcon(frame, section * (remain + 330) * 0.011111, 0.18, true, dofl)  -- 4 + (remain - 30) / 90
 		elseif remain < 360 then
 			SetupIcon(frame, section * (remain + 1080) * 0.0041667, 1.2, true, dofl)  -- 5 + (remain - 120) / 240
 			frame:SetAlpha(1)
@@ -413,7 +413,9 @@ do  -- cache spells that have a cooldown
 	local function CacheBook(btype)
 		local name, last
 		local sb = spells[btype]
-		for i = 1, 500, 1 do
+		-- Thanks to infinitumx for this 5.0.4 fix
+		local tabName, tabTexture, tabOffset, tabSlots = GetSpellTabInfo(2)
+		for i = tabOffset+1, tabSlots+tabOffset do
 			name = GetSpellBookItemName(i, btype)
 			if not name then break end
 			if name ~= last then
