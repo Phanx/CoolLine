@@ -418,7 +418,22 @@ do  -- cache spells that have a cooldown
 		for i = tabOffset+1, tabSlots+tabOffset do
 			name = GetSpellBookItemName(i, btype)
 			if not name then break end
-			if name ~= last then
+			local slotType, slotID = GetSpellBookItemInfo(i, btype)
+			if slotType == "FLYOUT" then
+				local _, _, numSlots, _ = GetFlyoutInfo(slotID)
+				for i = 1, numSlots do
+					local spellID, _, _, spellName, _ = GetFlyoutSlotInfo(slotID, i)
+					last = spellName
+					if sb[spellName] then
+						sb[spellName] = specialspells[spellName] or spellID
+					else
+						CLTip:SetSpellByID(spellID)
+						if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
+							sb[spellName] = specialspells[spellName] or spellID
+						end
+					end
+				end
+			elseif name ~= last then
 				local stype, id = GetSpellBookItemInfo(i, btype)
 				last = name
 				if sb[name] then
