@@ -406,7 +406,7 @@ do  -- cache spells that have a cooldown
 	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
 	local function CheckRight(rtext)
 		local text = rtext and rtext:GetText()
-		if text and (strmatch(text, cooldown1) or strmatch(text, cooldown2)) then
+		if text and text ~= '' and (strmatch(text, cooldown1) or strmatch(text, cooldown2)) then
 			return true
 		end
 	end
@@ -427,10 +427,10 @@ do  -- cache spells that have a cooldown
 					if sb[spellName] then
 						sb[spellName] = specialspells[spellName] or spellID
 					else
-						CLTip:SetSpellByID(spellID)
-						if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
+						--CLTip:SetSpellByID(spellID)
+						--if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
 							sb[spellName] = specialspells[spellName] or spellID
-						end
+						--end
 					end
 				end
 			elseif name ~= last then
@@ -439,10 +439,10 @@ do  -- cache spells that have a cooldown
 				if sb[name] then
 					sb[name] = specialspells[name] or id
 				else
-					CLTip:SetSpellBookItem(i, btype)
-					if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
+					--CLTip:SetSpellByID(id)
+					--if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
 						sb[name] = specialspells[name] or id
-					end
+					--end
 				end
 			end
 		end
