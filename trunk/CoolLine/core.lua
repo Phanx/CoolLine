@@ -60,6 +60,7 @@ function CoolLine:ADDON_LOADED(a1)
 			bordercolor = { r = 1, g = 1, b = 1, a = 1, },
 			font = "Friz Quadrata TT",
 			fontsize = 10,
+			iconplus = 4,
 			fontcolor = { r = 1, g = 1, b = 1, a = 0.8, },
 			spellcolor = { r = 0.8, g = 0.4, b = 0, a = 1, },
 			nospellcolor = { r = 0, g = 0, b = 0, a = 1, },
@@ -73,8 +74,8 @@ function CoolLine:ADDON_LOADED(a1)
 		end
 	end
 	block = db.block
-	
-	if select(2, UnitClass("player")) == "DEATHKNIGHT" then
+	local _, class = UnitClass("player")
+	if class == "DEATHKNIGHT" then
 		local runecd = {  -- fix by NeoSyrex
 			[GetSpellInfo(50977) or "Death Gate"] = 11,
 			[GetSpellInfo(43265) or "Death and Decay"] = 11,
@@ -98,8 +99,7 @@ function CoolLine:ADDON_LOADED(a1)
 				return true
 			end
 		end
-	end
-	if select(2, UnitClass("player")) == "PRIEST" then
+	elseif class == "PRIEST" then
 		specialspells = {
 			[GetSpellInfo(87151) or "blah"] = 87151,  -- Archangel
 			[GetSpellInfo(14751) or "blah"] = 14751,  -- Chakra
@@ -107,8 +107,13 @@ function CoolLine:ADDON_LOADED(a1)
 			[GetSpellInfo(88684) or "blah"] = 88684,  -- Holy Word: Serenity
 			[GetSpellInfo(88682) or "blah"] = 88682,  -- Holy Word: Aspire
 			[GetSpellInfo(88685) or "blah"] = 88685,  -- Holy Word: Sanctuary
-			[GetSpellInfo(88625) or "blah"] = 88625  -- Holy Word: Chastise
+			[GetSpellInfo(88625) or "blah"] = 88625,  -- Holy Word: Chastise
 		}
+	--[[elseif class == "DRUID" then
+		specialspells = {
+			[GetSpellInfo(33917) or "blah"] = 33878,  -- Mangle (Bear)
+			[GetSpellInfo(106830) or "blah"] = 77758,  -- Thrash (Bear)
+		}]]--
 	end
 	
 	SlashCmdList.COOLLINE = ShowOptions
@@ -201,7 +206,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self.overlay:SetFrameLevel(24)
 
 		section = (db.vertical and db.h or db.w) / 6
-		iconsize = ((db.vertical and db.w) or db.h) + (db.iconplus or 0)
+		iconsize = ((db.vertical and db.w) or db.h) + (db.iconplus or 4)
 		SetValue = (db.vertical and (db.reverse and SetValueVR or SetValueV)) or (db.reverse and SetValueHR or SetValueH)
 		
 		tick0 = createfs(tick0, "0", 0, "LEFT")
@@ -256,15 +261,13 @@ function CoolLine:PLAYER_LOGIN()
 	self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 	self:RegisterEvent("SPELLS_CHANGED")
 	self:RegisterEvent("UNIT_ENTERED_VEHICLE")
+	self:SPELL_UPDATE_COOLDOWN()
 	if UnitHasVehicleUI("player") then
 		self:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 		self:RegisterEvent("UNIT_EXITED_VEHICLE")
 	end
 	updatelook()
-	self:SPELLS_CHANGED()
-	self:SPELL_UPDATE_COOLDOWN()
 	self:SetAlpha((#cooldowns == 0 and db.inactivealpha) or db.activealpha)
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 end
 
@@ -280,6 +283,7 @@ end
 ----------------------------------------
 function CoolLine:PLAYER_LEAVING_WORLD()
 ----------------------------------------
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:UnregisterEvent("SPELLS_CHANGED")
 	self:UnregisterEvent("SPELL_UPDATE_COOLDOWN")
 end
@@ -399,50 +403,35 @@ end
 CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 
 do  -- cache spells that have a cooldown
-	local CLTip = CreateFrame("GameTooltip", "CLTip", CoolLine, "GameTooltipTemplate")
-	CLTip:SetOwner(CoolLine, "ANCHOR_NONE")
-	local GetSpellBookItemName, GetSpellBookItemInfo = GetSpellBookItemName, GetSpellBookItemInfo
-	local cooldown1 = gsub(SPELL_RECAST_TIME_MIN, "%%%.%d[fg]", "(.+)")
-	local cooldown2 = gsub(SPELL_RECAST_TIME_SEC, "%%%.%d[fg]", "(.+)")
-	local function CheckRight(rtext)
-		local text = rtext and rtext:GetText()
-		if text and text ~= '' and (strmatch(text, cooldown1) or strmatch(text, cooldown2)) then
-			return true
-		end
-	end
+	local GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown = GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown
 	local function CacheBook(btype)
-		local name, last
+		local lastId, spellName
 		local sb = spells[btype]
-		-- Thanks to infinitumx for this 5.0.4 fix
-		local tabName, tabTexture, tabOffset, tabSlots = GetSpellTabInfo(2)
-		for i = tabOffset+1, tabSlots+tabOffset do
-			name = GetSpellBookItemName(i, btype)
-			if not name then break end
-			local slotType, slotID = GetSpellBookItemInfo(i, btype)
+		local _, _, offset, numSpells = GetSpellTabInfo(2)
+		for i = 1, offset + numSpells, 1 do
+			spellName = GetSpellBookItemName(i, btype)
+			if not spellName then break end
+			local slotType, spellId = GetSpellBookItemInfo(i, btype)
 			if slotType == "FLYOUT" then
-				local _, _, numSlots, _ = GetFlyoutInfo(slotID)
-				for i = 1, numSlots do
-					local spellID, _, _, spellName, _ = GetFlyoutSlotInfo(slotID, i)
-					last = spellName
-					if sb[spellName] then
-						sb[spellName] = specialspells[spellName] or spellID
-					else
-						--CLTip:SetSpellByID(spellID)
-						--if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
-							sb[spellName] = specialspells[spellName] or spellID
-						--end
+				local _, _, numSlots, isKnown = GetFlyoutInfo(spellId)
+				for fi = 1, ((isKnown and numSlots) or 0), 1 do
+					local flySpellId, _, _, flySpellName, _ = GetFlyoutSlotInfo(spellId, fi)
+					last = flySpellName
+					if flySpellId then
+						local flycd = GetSpellBaseCooldown(flySpellId)
+						if flycd and flycd > 2499 then
+							sb[flySpellId] = specialspells[flySpellId] or flySpellName
+						end
 					end
 				end
-			elseif name ~= last then
-				local stype, id = GetSpellBookItemInfo(i, btype)
-				last = name
-				if sb[name] then
-					sb[name] = specialspells[name] or id
-				else
-					--CLTip:SetSpellByID(id)
-					--if CheckRight(CLTipTextRight2) or CheckRight(CLTipTextRight3) or CheckRight(CLTipTextRight4) then
-						sb[name] = specialspells[name] or id
-					--end
+			elseif slotType ~= "FUTURESPELL" and spellId ~= last then
+				last = spellId
+				local spellcd = GetSpellBaseCooldown(spellId)
+				if spellcd and spellcd > 2499 then
+					sb[spellId] = spellName
+					if specialspells[spellName] then
+						sb[ specialspells[spellName] ] = spellName
+					end
 				end
 			end
 		end
@@ -462,8 +451,8 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	local spellthrot = CreateFrame("Frame", nil, CoolLine)
 	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
 	local function CheckSpellBook(btype)
-		for name, id in pairs(spells[btype]) do
-			local start, duration, enable = GetSpellCooldown(id)
+		for id, name in pairs(spells[btype]) do
+			local start, duration, enable = GetSpellCooldown(name)
 			if enable == 1 and start > 0 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
 				if duration > 2.5 then
 					local _, _, texture = GetSpellInfo(id)
@@ -574,8 +563,8 @@ local GetActionCooldown, HasAction = GetActionCooldown, HasAction
 ---------------------------------------------
 function CoolLine:ACTIONBAR_UPDATE_COOLDOWN()  -- used only for vehicles
 ---------------------------------------------
-	for i = 1, 6, 1 do
-		local b = _G["VehicleMenuBarActionButton"..i]
+	for i = 1, 8, 1 do
+		local b = _G["OverrideActionBarButton"..i]
 		if b and HasAction(b.action) then
 			local start, duration, enable = GetActionCooldown(b.action)
 			if enable == 1 then
