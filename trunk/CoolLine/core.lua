@@ -412,7 +412,7 @@ do  -- cache spells that have a cooldown
 			spellName = GetSpellBookItemName(i, btype)
 			if not spellName then break end
 			local slotType, spellId = GetSpellBookItemInfo(i, btype)
-			if slotType == "FLYOUT" then
+			if spellId and slotType == "FLYOUT" then
 				local _, _, numSlots, isKnown = GetFlyoutInfo(spellId)
 				for fi = 1, ((isKnown and numSlots) or 0), 1 do
 					local flySpellId, _, _, flySpellName, _ = GetFlyoutSlotInfo(spellId, fi)
@@ -424,7 +424,7 @@ do  -- cache spells that have a cooldown
 						end
 					end
 				end
-			elseif slotType ~= "FUTURESPELL" and spellId ~= last then
+			elseif spellId and slotType ~= "FUTURESPELL" and spellId ~= last then
 				last = spellId
 				local spellcd = GetSpellBaseCooldown(spellId)
 				if spellcd and spellcd > 2499 then
