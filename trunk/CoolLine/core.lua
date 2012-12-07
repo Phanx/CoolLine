@@ -225,8 +225,8 @@ function CoolLine:ADDON_LOADED(a1)
 			self:UnregisterEvent("UNIT_PET")
 			self:UnregisterEvent("PET_BAR_UPDATE_COOLDOWN")
 		else
-			self:RegisterEvent("UNIT_PET")
-			self:UNIT_PET("player")
+			self:RegisterUnitEvent("UNIT_PET", "player")
+			self:UNIT_PET()
 		end
 		if db.hidebag and db.hideinv then
 			self:UnregisterEvent("BAG_UPDATE_COOLDOWN")
@@ -237,7 +237,7 @@ function CoolLine:ADDON_LOADED(a1)
 		if db.hidefail then
 			self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
 		else
-			self:RegisterEvent("UNIT_SPELLCAST_FAILED")
+			self:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", "player")
 		end
 		CoolLine:SetAlpha((CoolLine.unlock or #cooldowns > 0) and db.activealpha or db.inactivealpha)
 		for _, frame in ipairs(cooldowns) do
@@ -260,11 +260,11 @@ function CoolLine:PLAYER_LOGIN()
 	self.PLAYER_LOGIN = nil
 	self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 	self:RegisterEvent("SPELLS_CHANGED")
-	self:RegisterEvent("UNIT_ENTERED_VEHICLE")
+	self:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
 	self:SPELL_UPDATE_COOLDOWN()
 	if UnitHasVehicleUI("player") then
 		self:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
-		self:RegisterEvent("UNIT_EXITED_VEHICLE")
+		self:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
 	end
 	updatelook()
 	self:SetAlpha((#cooldowns == 0 and db.inactivealpha) or db.activealpha)
@@ -551,7 +551,6 @@ end
 ------------------------------
 function CoolLine:UNIT_PET(a1)
 ------------------------------
-	if a1 ~= "player" then return end
 	if UnitExists("pet") and not HasPetUI() then
 		self:RegisterEvent("PET_BAR_UPDATE_COOLDOWN")
 	else
@@ -580,17 +579,16 @@ function CoolLine:ACTIONBAR_UPDATE_COOLDOWN()  -- used only for vehicles
 	end
 end
 ------------------------------------------
-function CoolLine:UNIT_ENTERED_VEHICLE(a1)
+function CoolLine:UNIT_ENTERED_VEHICLE()
 ------------------------------------------
-	if a1 ~= "player" or not UnitHasVehicleUI("player") then return end
+	if not UnitHasVehicleUI("player") then return end
 	self:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
-	self:RegisterEvent("UNIT_EXITED_VEHICLE")
+	self:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
 	self:ACTIONBAR_UPDATE_COOLDOWN()
 end
 -----------------------------------------
-function CoolLine:UNIT_EXITED_VEHICLE(a1)
+function CoolLine:UNIT_EXITED_VEHICLE()
 -----------------------------------------
-	if a1 ~= "player" then return end
 	self:UnregisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 	for index, frame in ipairs(cooldowns) do
 		if strmatch(frame.name, "vhcle") then
@@ -603,7 +601,7 @@ local failborder
 ----------------------------------------------------
 function CoolLine:UNIT_SPELLCAST_FAILED(unit, spell)
 ----------------------------------------------------
-	if unit ~= "player" or #cooldowns == 0 then return end
+	if #cooldowns == 0 then return end
 	for index, frame in pairs(cooldowns) do
 		if frame.name == spell then
 			if frame.endtime - GetTime() > 1 then
