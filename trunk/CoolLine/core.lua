@@ -20,7 +20,7 @@ local section, iconsize = 0, 0
 local tick0, tick1, tick3, tick10, tick30, tick120, tick300
 local BOOKTYPE_SPELL, BOOKTYPE_PET = BOOKTYPE_SPELL, BOOKTYPE_PET
 local spells = { [BOOKTYPE_SPELL] = { }, [BOOKTYPE_PET] = { }, }
-local frames, cooldowns, specialspells = { }, { }, { }
+local frames, cooldowns, specialspells, placeholder = { }, { }, { }, { }
 
 local SetValue, updatelook, createfs, ShowOptions, RuneCheck
 local function SetValueH(this, v, just)
@@ -99,6 +99,8 @@ function CoolLine:ADDON_LOADED(a1)
 				return true
 			end
 		end
+	elseif class == "MAGE" then
+		placeholder = { [125430] = 112948, }
 	elseif class == "PRIEST" then
 		specialspells = {
 			[GetSpellInfo(87151) or "blah"] = 87151,  -- Archangel
@@ -426,7 +428,7 @@ do  -- cache spells that have a cooldown
 				end
 			elseif spellId and slotType ~= "FUTURESPELL" and spellId ~= last then
 				last = spellId
-				local spellcd = GetSpellBaseCooldown(spellId)
+				local spellcd = GetSpellBaseCooldown(placeholder[spellId] or spellId)
 				if spellcd and spellcd > 2499 then
 					sb[spellId] = spellName
 					if specialspells[spellName] then
@@ -453,7 +455,7 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 	local function CheckSpellBook(btype)
 		for id, name in pairs(spells[btype]) do
 			local start, duration, enable = GetSpellCooldown(name)
-			if enable == 1 and start > 0 and not block[name] and (not RuneCheck or RuneCheck(name, duration))then
+			if enable == 1 and start > 0 and not block[name] and (not RuneCheck or RuneCheck(name, duration)) then
 				if duration > 2.5 then
 					local _, _, texture = GetSpellInfo(id)
 					NewCooldown(name, texture, start + duration, btype == BOOKTYPE_SPELL)
