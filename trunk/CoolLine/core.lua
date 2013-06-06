@@ -15,7 +15,7 @@ local UnitExists, HasPetUI = UnitExists, HasPetUI
 local GetSpellInfo = GetSpellInfo
 
 local db, block
-local backdrop = { edgeSize=16, }
+local backdrop = { edgeSize=16, } -- Left Unchanged
 local section, iconsize = 0, 0
 local tick0, tick1, tick3, tick10, tick30, tick120, tick300
 local BOOKTYPE_SPELL, BOOKTYPE_PET = BOOKTYPE_SPELL, BOOKTYPE_PET
@@ -50,13 +50,15 @@ function CoolLine:ADDON_LOADED(a1)
 		CoolLineCharDB = nil
 		db = CoolLineDB
 	end
-	if db.dbinit ~= 1 then
-		db.dbinit = 1
+	if db.dbinit ~= 3 then
+		db.dbinit = 3
 		for k, v in pairs({
 			w = 360, h = 18, x = 0, y = -240,
 			statusbar = "Blizzard",
 			bgcolor = { r = 0, g = 0, b = 0, a = 0.5, },
 			border = "Blizzard Dialog",
+			bordersize = 16, -- Added defaults
+			borderinset = 4, -- Added defaults
 			bordercolor = { r = 1, g = 1, b = 1, a = 1, },
 			font = "Friz Quadrata TT",
 			fontsize = 10,
@@ -198,9 +200,12 @@ function CoolLine:ADDON_LOADED(a1)
 		end
 		
 		self.border = self.border or CreateFrame("Frame", nil, self)
-		self.border:SetPoint("TOPLEFT", -4, 4)
-		self.border:SetPoint("BOTTOMRIGHT", 4, -4)
-		backdrop.edgeFile = smed:Fetch("border", db.border)
+		self.border:SetPoint("TOPLEFT", -db.borderinset, db.borderinset) -- Implemented 'insets'
+		self.border:SetPoint("BOTTOMRIGHT", db.borderinset, -db.borderinset) -- Implemented 'insets'
+		backdrop = {
+			edgeFile = smed:Fetch("border", db.border),
+			edgeSize = db.bordersize,
+		} -- Updated backdrop table
 		self.border:SetBackdrop(backdrop)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
 		
@@ -805,6 +810,8 @@ function ShowOptions(a1)
 				AddList(lvl, "Texture", "statusbar")
 				AddColor(lvl, "Texture Color", "bgcolor")
 				AddList(lvl, "Border", "border")
+				AddList(lvl, "Border Size", "bordersize") -- Added Options
+				AddList(lvl, "Border Inset", "borderinset") -- Added Options
 				AddColor(lvl, "Border Color", "bordercolor")
 				AddList(lvl, "Font", "font")
 				AddColor(lvl, "Font Color", "fontcolor")
@@ -835,6 +842,14 @@ function ShowOptions(a1)
 					end
 					for i = 14, 28, 2 do
 						AddSelect(lvl, i, "fontsize", i)
+					end
+				elseif sub == "bordersize" then -- Added options limits
+					for i = 1, 16, 1 do
+						AddSelect(lvl, i, "bordersize", i)
+					end
+				elseif sub == "borderinset" then -- Added options limits
+					for i = -10, 10, 1 do
+						AddSelect(lvl, i, "borderinset", i)
 					end
 				elseif sub == "inactivealpha" or sub == "activealpha" then
 					for i = 0, 1, 0.1 do
@@ -876,4 +891,3 @@ CONFIGMODE_CALLBACKS.CoolLine = function(action, mode)
 		end
 	end
 end
-
