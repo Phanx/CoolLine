@@ -20,6 +20,7 @@ local section, iconsize = 0, 0
 local tick0, tick1, tick3, tick10, tick30, tick120, tick300
 local BOOKTYPE_SPELL, BOOKTYPE_PET = BOOKTYPE_SPELL, BOOKTYPE_PET
 local spells = { [BOOKTYPE_SPELL] = { }, [BOOKTYPE_PET] = { }, }
+local chargespells = { [BOOKTYPE_SPELL] = { }, [BOOKTYPE_PET] = { }, }
 local frames, cooldowns, specialspells, placeholder = { }, { }, { }, { }
 
 local SetValue, updatelook, createfs, ShowOptions, RuneCheck
@@ -41,7 +42,7 @@ function CoolLine:ADDON_LOADED(a1)
 	if a1 ~= "CoolLine" then return end
 	self:UnregisterEvent("ADDON_LOADED")
 	self.ADDON_LOADED = nil
-	
+
 	CoolLineDB = CoolLineDB or { }
 	if CoolLineDB.perchar then
 		CoolLineCharDB = CoolLineCharDB or CoolLineDB
@@ -83,7 +84,7 @@ function CoolLine:ADDON_LOADED(a1)
 			[GetSpellInfo(43265) or "Death and Decay"] = 11,
 			[GetSpellInfo(48263) or "Frost Presence"] = 1,
 			[GetSpellInfo(48266) or "Blood Presence"] = 1,
-			[GetSpellInfo(48265) or "Unholy Presence"] = 1, 
+			[GetSpellInfo(48265) or "Unholy Presence"] = 1,
 			[GetSpellInfo(42650) or "Army of the Dead"] = 11,
 			[GetSpellInfo(49222) or "Bone Shield"] = 11,
 			[GetSpellInfo(47476) or "Strangulate"] = 11,
@@ -119,7 +120,7 @@ function CoolLine:ADDON_LOADED(a1)
 			[GetSpellInfo(106830) or "blah"] = 77758,  -- Thrash (Bear)
 		}]]--
 	end
-	
+
 	SlashCmdList.COOLLINE = ShowOptions
 	SLASH_COOLLINE1 = "/coolline"
 	local panel = CreateFrame("Frame")
@@ -131,7 +132,7 @@ function CoolLine:ADDON_LOADED(a1)
 		t1:SetFontObject(GameFontNormalLarge)
 		t1:SetPoint("TOPLEFT", 16, -16)
 		t1:SetText(this.name)
-		
+
 		local t2 = this:CreateFontString(nil, "ARTWORK")
 		t2:SetJustifyH("LEFT")
 		t2:SetJustifyV("TOP")
@@ -141,11 +142,11 @@ function CoolLine:ADDON_LOADED(a1)
 		t2:SetPoint("RIGHT", this, "RIGHT", -32, 0)
 		t2:SetNonSpaceWrap(true)
 		t2:SetFormattedText("Notes: %s\nAuthor: %s\nVersion: %s\n"..
-							"Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemNameOrLink|r to add/remove filter", 
+							"Hint: |cffffff00/coolline|r to open menu; |cffffff00/coolline SpellOrItemNameOrLink|r to add/remove filter",
 							 GetAddOnMetadata("CoolLine", "Notes") or "N/A",
 							 GetAddOnMetadata("CoolLine", "Author") or "N/A",
 							 GetAddOnMetadata("CoolLine", "Version") or "N/A")
-	
+
 		local b = CreateFrame("Button", nil, this, "UIPanelButtonTemplate")
 		b:SetWidth(120)
 		b:SetHeight(20)
@@ -188,7 +189,7 @@ function CoolLine:ADDON_LOADED(a1)
 		self:SetWidth(db.w or 130)
 		self:SetHeight(db.h or 18)
 		self:SetPoint("CENTER", UIParent, "CENTER", db.x or 0, db.y or -240)
-		
+
 		self.bg = self.bg or self:CreateTexture(nil, "ARTWORK")
 		self.bg:SetTexture(smed:Fetch("statusbar", db.statusbar))
 		self.bg:SetVertexColor(db.bgcolor.r, db.bgcolor.g, db.bgcolor.b, db.bgcolor.a)
@@ -198,7 +199,7 @@ function CoolLine:ADDON_LOADED(a1)
 		else
 			self.bg:SetTexCoord(0,1, 0,1)
 		end
-		
+
 		self.border = self.border or CreateFrame("Frame", nil, self)
 		self.border:SetPoint("TOPLEFT", -db.borderinset, db.borderinset) -- Implemented 'insets'
 		self.border:SetPoint("BOTTOMRIGHT", db.borderinset, -db.borderinset) -- Implemented 'insets'
@@ -208,14 +209,14 @@ function CoolLine:ADDON_LOADED(a1)
 		} -- Updated backdrop table
 		self.border:SetBackdrop(backdrop)
 		self.border:SetBackdropBorderColor(db.bordercolor.r, db.bordercolor.g, db.bordercolor.b, db.bordercolor.a)
-		
+
 		self.overlay = self.overlay or CreateFrame("Frame", nil, self.border)
 		self.overlay:SetFrameLevel(24)
 
 		section = (db.vertical and db.h or db.w) / 6
 		iconsize = ((db.vertical and db.w) or db.h) + (db.iconplus or 4)
 		SetValue = (db.vertical and (db.reverse and SetValueVR or SetValueV)) or (db.reverse and SetValueHR or SetValueH)
-		
+
 		tick0 = createfs(tick0, "0", 0, "LEFT")
 		tick1 = createfs(tick1, "1", section)
 		tick3 = createfs(tick3, "3", section * 2)
@@ -253,7 +254,7 @@ function CoolLine:ADDON_LOADED(a1)
 		end
 	end
 	CoolLine.updatelook = updatelook
-	
+
 	if IsLoggedIn() then
 		CoolLine:PLAYER_LOGIN()
 	else
@@ -265,14 +266,27 @@ end
 function CoolLine:PLAYER_LOGIN()
 --------------------------------
 	self.PLAYER_LOGIN = nil
-	self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+
 	self:RegisterEvent("SPELLS_CHANGED")
-	self:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
+	self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+	self:RegisterEvent("SPELL_UPDATE_CHARGES")
+	self.SPELL_UPDATE_CHARGES = self.SPELL_UPDATE_COOLDOWN
 	self:SPELL_UPDATE_COOLDOWN()
+
+	self:RegisterEvent("PET_BATTLE_OPENING_START")
+	self:RegisterEvent("PET_BATTLE_CLOSE")
+	self.PET_BATTLE_OPENING_START = self.Hide
+	self.PET_BATTLE_CLOSE = self.Show
+	if C_PetBattles.IsInBattle() then
+		self:Hide()
+	end
+
+	self:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
 	if UnitHasVehicleUI("player") then
 		self:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 		self:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
 	end
+
 	updatelook()
 	self:SetAlpha((#cooldowns == 0 and db.inactivealpha) or db.activealpha)
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
@@ -321,7 +335,7 @@ local function OnUpdate(this, a1, ctime, dofl)
 	elapsed = elapsed + a1
 	if elapsed < throt then return end
 	elapsed = 0
-	
+
 	if #cooldowns == 0 then
 		if not CoolLine.unlock then
 			self:SetScript("OnUpdate", nil)
@@ -329,7 +343,7 @@ local function OnUpdate(this, a1, ctime, dofl)
 		end
 		return
 	end
-	
+
 	ctime = ctime or GetTime()
 	if ctime > ptime then
 		dofl, ptime = true, ctime + 0.4
@@ -439,6 +453,11 @@ do  -- cache spells that have a cooldown
 					if specialspells[spellName] then
 						sb[ specialspells[spellName] ] = spellName
 					end
+				else
+					local currentCharges, maxCharges, cooldownStart, cooldownDuration = GetSpellCharges(spellId)
+					if maxCharges and maxCharges > 0 then
+						chargespells[btype][spellId] = spellName
+					end
 				end
 			end
 		end
@@ -456,7 +475,7 @@ end
 do  -- scans spellbook to update cooldowns, throttled since the event fires a lot
 	local selap = 0
 	local spellthrot = CreateFrame("Frame", nil, CoolLine)
-	local GetSpellCooldown, GetSpellTexture = GetSpellCooldown, GetSpellTexture
+	local GetSpellCooldown, GetSpellTexture, GetSpellCharges = GetSpellCooldown, GetSpellTexture, GetSpellCharges
 	local function CheckSpellBook(btype)
 		for id, name in pairs(spells[btype]) do
 			local start, duration, enable = GetSpellCooldown(name)
@@ -474,6 +493,15 @@ do  -- scans spellbook to update cooldowns, throttled since the event fires a lo
 						end
 					end
 				end
+			else
+				ClearCooldown(nil, name)
+			end
+		end
+		for id, name in pairs(chargespells[btype]) do
+			local currentCharges, maxCharges, cooldownStart, cooldownDuration = GetSpellCharges(id)
+			if cooldownStart and cooldownDuration and currentCharges < maxCharges and not block[name] then
+				local _, _, texture = GetSpellInfo(id)
+				NewCooldown(name, texture, cooldownStart + cooldownDuration, bookType == BOOKTYPE_SPELL)
 			else
 				ClearCooldown(nil, name)
 			end
@@ -665,7 +693,7 @@ function ShowOptions(a1)
 					CoolLine:RegisterForDrag("LeftButton")
 					CoolLine:SetScript("OnMouseUp", function(this, a1) if a1 == "RightButton" then ShowOptions() end end)
 					CoolLine:SetScript("OnDragStart", function(this) this:StartMoving() end)
-					CoolLine:SetScript("OnDragStop", function(this) 
+					CoolLine:SetScript("OnDragStop", function(this)
 						this:StopMovingOrSizing()
 						local x, y = this:GetCenter()
 						local ux, uy = UIParent:GetCenter()
@@ -673,7 +701,7 @@ function ShowOptions(a1)
 						this:ClearAllPoints()
 						updatelook()
 					end)
-				
+
 					CoolLine:SetMinResize(6, 6)
 					CoolLine.resizer = CreateFrame("Button", nil, CoolLine.border, "UIPanelButtonTemplate")
 					local resize = CoolLine.resizer
@@ -681,7 +709,7 @@ function ShowOptions(a1)
 					resize:SetHeight(8)
 					resize:SetPoint("BOTTOMRIGHT", CoolLine, "BOTTOMRIGHT", 2, -2)
 					resize:SetScript("OnMouseDown", function(this) CoolLine:StartSizing("BOTTOMRIGHT") end)
-					resize:SetScript("OnMouseUp", function(this) 
+					resize:SetScript("OnMouseUp", function(this)
 						CoolLine:StopMovingOrSizing()
 						db.w, db.h = floor(CoolLine:GetWidth() + 0.5), floor(CoolLine:GetHeight() + 0.5)
 						updatelook()
@@ -834,7 +862,7 @@ function ShowOptions(a1)
 						AddSelect(lvl, t[i], sub, t[i])
 						if i == endi and t[i + 1] then
 							AddList(lvl, "More", sub)
-						end	
+						end
 					end
 				elseif sub == "fontsize" then
 					for i = 5, 12, 1 do
