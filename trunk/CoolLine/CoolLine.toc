@@ -2,7 +2,7 @@
 ## Title: CoolLine
 ## Notes: Shows cooldowns on a single bar.
 ## Author: TotalPackage
-## Version: 6.0.001
+## Version: 6.0.002
 
 ## SavedVariables: CoolLineDB
 ## SavedVariablesPerCharacter: CoolLineCharDB
@@ -12,5 +12,8 @@
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Always: delayed
 
-embeds.xml
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
 core.lua

@@ -425,19 +425,26 @@ CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 
 do  -- cache spells that have a cooldown
 	local GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown = GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown
+	local N_SEC_COOLDOWN = gsub(SPELL_RECAST_TIME_SEC, "%%%.3g", "(.+)")
+	local scantip = CreateFrame("GameTooltip")
+	for i = 1, 5 do
+		local L, R = scantip:CreateFontString(nil,nil,"GameFontNormal"), scantip:CreateFontString(nil,nil,"GameFontNormal")
+		scantip:AddFontStrings(L, R)
+		scantip[i] = R
+	end
 	local function CacheBook(btype)
-		local lastId, spellName
+		local lastId
 		local sb = spells[btype]
 		local _, _, offset, numSpells = GetSpellTabInfo(2)
 		for i = 1, offset + numSpells, 1 do
-			spellName = GetSpellBookItemName(i, btype)
+			local spellName = GetSpellBookItemName(i, btype)
 			if not spellName then break end
 			local slotType, spellId = GetSpellBookItemInfo(i, btype)
 			if spellId and slotType == "FLYOUT" then
 				local _, _, numSlots, isKnown = GetFlyoutInfo(spellId)
 				for fi = 1, ((isKnown and numSlots) or 0), 1 do
 					local flySpellId, _, _, flySpellName, _ = GetFlyoutSlotInfo(spellId, fi)
-					last = flySpellName
+					lastId = flySpellId
 					if flySpellId then
 						local flycd = GetSpellBaseCooldown(flySpellId)
 						if flycd and flycd > 2499 then
@@ -445,18 +452,32 @@ do  -- cache spells that have a cooldown
 						end
 					end
 				end
-			elseif spellId and slotType ~= "FUTURESPELL" and spellId ~= last then
-				last = spellId
-				local spellcd = GetSpellBaseCooldown(placeholder[spellId] or spellId)
-				if spellcd and spellcd > 2499 then
-					sb[spellId] = spellName
-					if specialspells[spellName] then
-						sb[ specialspells[spellName] ] = spellName
-					end
+			elseif spellId and slotType ~= "FUTURESPELL" and spellId ~= lastId then
+				lastId = spellId
+				local _, maxCharges = GetSpellCharges(spellId)
+				if maxCharges and maxCharges > 0 then
+					--print(i, spellName, spellID, "CHARGES", maxCharges)
+					chargespells[btype][spellId] = spellName
 				else
-					local currentCharges, maxCharges, cooldownStart, cooldownDuration = GetSpellCharges(spellId)
-					if maxCharges and maxCharges > 0 then
-						chargespells[btype][spellId] = spellName
+					local spellcd = GetSpellBaseCooldown(placeholder[spellId] or spellId)
+					if spellcd and spellcd > 2499 then
+						sb[spellId] = spellName
+						--print(i, spellName, spellID, "COOLDOWN", spellcd)
+						if specialspells[spellName] then
+							sb[ specialspells[spellName] ] = spellName
+						end
+					elseif spellName ~= GetSpellInfo(spellId) then
+						scantip:SetOwner(WorldFrame, "ANCHOR_NONE")
+						scantip:SetSpellBookItem(i, btype)
+						for j = 2, 3 do
+							local text = scantip[j]:GetText()
+							local spellcd = text and (tonumber(strmatch(text, N_SEC_COOLDOWN) or 0) * 1000)
+							if spellcd and spellcd > 2499 then
+								--print(i, spellName, spellID, "COOLDOWN", spellcd, "***")
+								sb[spellId] = spellName
+							end
+						end
+						scantip:Hide()
 					end
 				end
 			end
