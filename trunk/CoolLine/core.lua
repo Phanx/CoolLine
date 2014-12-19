@@ -425,6 +425,7 @@ CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 
 do  -- cache spells that have a cooldown
 	local GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown = GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown
+	local N_MIN_COOLDOWN = gsub(SPELL_RECAST_TIME_MIN, "%%%.3g", "(.+)")
 	local N_SEC_COOLDOWN = gsub(SPELL_RECAST_TIME_SEC, "%%%.3g", "(.+)")
 	local scantip = CreateFrame("GameTooltip")
 	for i = 1, 5 do
@@ -466,15 +467,20 @@ do  -- cache spells that have a cooldown
 						if specialspells[spellName] then
 							sb[ specialspells[spellName] ] = spellName
 						end
-					elseif spellName ~= GetSpellInfo(spellId) then
+					elseif IsTalentSpell(i, btype) then
 						scantip:SetOwner(WorldFrame, "ANCHOR_NONE")
 						scantip:SetSpellBookItem(i, btype)
 						for j = 2, 3 do
 							local text = scantip[j]:GetText()
-							local spellcd = text and (tonumber(strmatch(text, N_SEC_COOLDOWN) or 0) * 1000)
-							if spellcd and spellcd > 2499 then
-								--print(i, spellName, spellID, "COOLDOWN", spellcd, "***")
-								sb[spellId] = spellName
+							if text then
+								local spellcd = tonumber(strmatch(text, N_SEC_COOLDOWN) or 0) * 1000
+								if spellcd == 0 then
+									spellcd = tonumber(strmatch(text, N_MIN_COOLDOWN) or 0) * 60000
+								end
+								if spellcd > 2499 then
+									--print(i, spellName, spellID, "COOLDOWN", spellcd, "***")
+									sb[spellId] = spellName
+								end
 							end
 						end
 						scantip:Hide()
