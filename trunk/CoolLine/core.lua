@@ -424,13 +424,14 @@ end
 CoolLine.NewCooldown, CoolLine.ClearCooldown = NewCooldown, ClearCooldown
 
 do  -- cache spells that have a cooldown
-	local GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown = GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown
+	local GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown, GetSpellCharges, IsTalentSpell
+	    = GetSpellBookItemName, GetSpellBookItemInfo, GetSpellBaseCooldown, GetSpellCharges, IsTalentSpell
 	local N_MIN_COOLDOWN = gsub(SPELL_RECAST_TIME_MIN, "%%%.3g", "(.+)")
 	local N_SEC_COOLDOWN = gsub(SPELL_RECAST_TIME_SEC, "%%%.3g", "(.+)")
 	local scantip = CreateFrame("GameTooltip")
 	for i = 1, 5 do
-		local L, R = scantip:CreateFontString(nil,nil,"GameFontNormal"), scantip:CreateFontString(nil,nil,"GameFontNormal")
-		scantip:AddFontStrings(L, R)
+		local R = scantip:CreateFontString(nil,nil,"GameFontNormal")
+		scantip:AddFontStrings(scantip:CreateFontString(nil,nil,"GameFontNormal"), R)
 		scantip[i] = R
 	end
 	local function CacheBook(btype)
