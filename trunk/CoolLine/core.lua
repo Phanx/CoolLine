@@ -429,10 +429,20 @@ do  -- cache spells that have a cooldown
 	local N_MIN_COOLDOWN = gsub(SPELL_RECAST_TIME_MIN, "%%%.3g", "(.+)")
 	local N_SEC_COOLDOWN = gsub(SPELL_RECAST_TIME_SEC, "%%%.3g", "(.+)")
 	local scantip = CreateFrame("GameTooltip")
-	for i = 1, 5 do
+	for i = 1, 3 do
 		local R = scantip:CreateFontString(nil,nil,"GameFontNormal")
 		scantip:AddFontStrings(scantip:CreateFontString(nil,nil,"GameFontNormal"), R)
 		scantip[i] = R
+	end
+	local function ParseCooldown(text)
+		local spellcd = strmatch(text, N_SEC_COOLDOWN)
+		if spellcd then
+			return tonumber((gsub(spellcd, ",", "."))) * 1000 -- tonumber doesn't support commas as decimal separators
+		end
+		spellcd = strmatch(text, N_MIN_COOLDOWN)
+		if spellcd then
+			return tonumber((gsub(spellcd, ",", "."))) * 60000 -- tonumber doesn't support commas as decimal separators
+		end
 	end
 	local function CacheBook(btype)
 		local lastId
@@ -458,30 +468,27 @@ do  -- cache spells that have a cooldown
 				lastId = spellId
 				local _, maxCharges = GetSpellCharges(spellId)
 				if maxCharges and maxCharges > 0 then
-					--print(i, spellName, spellID, "CHARGES", maxCharges)
+					--print(i, spellName, spellId, "CHARGES", maxCharges)
 					chargespells[btype][spellId] = spellName
 				else
 					local spellcd = GetSpellBaseCooldown(placeholder[spellId] or spellId)
 					if spellcd and spellcd > 2499 then
 						sb[spellId] = spellName
-						--print(i, spellName, spellID, "COOLDOWN", spellcd)
+						--print(i, spellName, spellId, "COOLDOWN", spellcd / 1000)
 						if specialspells[spellName] then
 							sb[ specialspells[spellName] ] = spellName
 						end
-					elseif IsTalentSpell(i, btype) then
+					elseif spellName ~= GetSpellInfo(i, btype) or IsTalentSpell(i, btype) then -- can't use IsTalentSpell alone because some spec spells also morph and get cooldowns
+						--print(i, spellName, spellId, "MISMATCH", (GetSpellInfo(i, btype)))
 						scantip:SetOwner(WorldFrame, "ANCHOR_NONE")
 						scantip:SetSpellBookItem(i, btype)
 						for j = 2, 3 do
 							local text = scantip[j]:GetText()
-							if text then
-								local spellcd = tonumber(strmatch(text, N_SEC_COOLDOWN) or 0) * 1000
-								if spellcd == 0 then
-									spellcd = tonumber(strmatch(text, N_MIN_COOLDOWN) or 0) * 60000
-								end
-								if spellcd > 2499 then
-									--print(i, spellName, spellID, "COOLDOWN", spellcd, "***")
-									sb[spellId] = spellName
-								end
+							local spellcd = text and ParseCooldown(text)
+							if spellcd and spellcd > 2499 then
+								--print(i, spellName, spellId, "COOLDOWN", spellcd / 1000, "***")
+								sb[spellId] = spellName
+								break
 							end
 						end
 						scantip:Hide()
@@ -715,46 +722,46 @@ function ShowOptions(a1)
 
 		Set = function(b, a1)
 			if a1 == "unlock" then
-				if not CoolLine.resizer then
-					CoolLine:SetMovable(true)
-					CoolLine:SetResizable(true)
-					CoolLine:RegisterForDrag("LeftButton")
-					CoolLine:SetScript("OnMouseUp", function(this, a1) if a1 == "RightButton" then ShowOptions() end end)
-					CoolLine:SetScript("OnDragStart", function(this) this:StartMoving() end)
-					CoolLine:SetScript("OnDragStop", function(this)
-						this:StopMovingOrSizing()
-						local x, y = this:GetCenter()
-						local ux, uy = UIParent:GetCenter()
-						db.x, db.y = floor(x - ux + 0.5), floor(y - uy + 0.5)
-						this:ClearAllPoints()
-						updatelook()
-					end)
+	if not CoolLine.resizer then
+		CoolLine:SetMovable(true)
+		CoolLine:SetResizable(true)
+		CoolLine:RegisterForDrag("LeftButton")
+		CoolLine:SetScript("OnMouseUp", function(this, a1) if a1 == "RightButton" then ShowOptions() end end)
+		CoolLine:SetScript("OnDragStart", function(this) this:StartMoving() end)
+		CoolLine:SetScript("OnDragStop", function(this)
+			this:StopMovingOrSizing()
+			local x, y = this:GetCenter()
+			local ux, uy = UIParent:GetCenter()
+			db.x, db.y = floor(x - ux + 0.5), floor(y - uy + 0.5)
+			this:ClearAllPoints()
+			updatelook()
+		end)
 
-					CoolLine:SetMinResize(6, 6)
-					CoolLine.resizer = CreateFrame("Button", nil, CoolLine.border, "UIPanelButtonTemplate")
-					local resize = CoolLine.resizer
-					resize:SetWidth(8)
-					resize:SetHeight(8)
-					resize:SetPoint("BOTTOMRIGHT", CoolLine, "BOTTOMRIGHT", 2, -2)
-					resize:SetScript("OnMouseDown", function(this) CoolLine:StartSizing("BOTTOMRIGHT") end)
-					resize:SetScript("OnMouseUp", function(this)
-						CoolLine:StopMovingOrSizing()
-						db.w, db.h = floor(CoolLine:GetWidth() + 0.5), floor(CoolLine:GetHeight() + 0.5)
-						updatelook()
-					end)
-				end
-				if not CoolLine.unlock then
-					CoolLine.unlock = true
-					CoolLine:EnableMouse(true)
-					CoolLine.resizer:Show()
-					CoolLine:SetAlpha(db.activealpha)
+		CoolLine:SetMinResize(6, 6)
+		CoolLine.resizer = CreateFrame("Button", nil, CoolLine.border, "UIPanelButtonTemplate")
+		local resize = CoolLine.resizer
+		resize:SetWidth(8)
+		resize:SetHeight(8)
+		resize:SetPoint("BOTTOMRIGHT", CoolLine, "BOTTOMRIGHT", 2, -2)
+		resize:SetScript("OnMouseDown", function(this) CoolLine:StartSizing("BOTTOMRIGHT") end)
+		resize:SetScript("OnMouseUp", function(this)
+			CoolLine:StopMovingOrSizing()
+			db.w, db.h = floor(CoolLine:GetWidth() + 0.5), floor(CoolLine:GetHeight() + 0.5)
+			updatelook()
+		end)
+	end
+	if not CoolLine.unlock then
+		CoolLine.unlock = true
+		CoolLine:EnableMouse(true)
+		CoolLine.resizer:Show()
+		CoolLine:SetAlpha(db.activealpha)
 					print("CoolLine - drag frame to reposition or drag red corner to resize")
-				else
-					CoolLine.unlock = nil
-					CoolLine:EnableMouse(false)
-					CoolLine.resizer:Hide()
-					OnUpdate(CoolLine, 2)
-				end
+	else
+		CoolLine.unlock = nil
+		CoolLine:EnableMouse(false)
+		CoolLine.resizer:Hide()
+		OnUpdate(CoolLine, 2)
+	end
 			elseif a1 then
 				if a1 == "vertical" then
 					local pw, ph = db.w, db.h
@@ -762,19 +769,19 @@ function ShowOptions(a1)
 				elseif a1 == "resetall" then
 					CoolLineCharDB, CoolLineDB = nil, nil
 					return ReloadUI()
-				end
+end
 				db[a1] = not db[a1]
 				if a1 == "perchar" then
 					if db.perchar then
 						CoolLineCharDB = CoolLineCharDB or CoolLineDB
 					else
 						CoolLineCharDB = nil
-					end
+	end
 					ReloadUI()
-				end
+end
 				updatelook()
-			end
 		end
+			end
 		local function SetSelect(b, a1)
 			db[a1] = tonumber(b.value) or b.value
 			local level, num = strmatch(b:GetName(), "DropDownList(%d+)Button(%d+)")
@@ -786,9 +793,9 @@ function ShowOptions(a1)
 						check:Show()
 					elseif b then
 						check:Hide()
-					end
-				end
-			end
+		end
+	end
+end
 			updatelook()
 		end
 		local function SetColor(a1)
@@ -798,17 +805,17 @@ function ShowOptions(a1)
 			if a1 then
 				local pv = ColorPickerFrame.previousValues
 				r, g, b, a = pv.r, pv.g, pv.b, 1 - pv.opacity
-			else
+		else
 				r, g, b = ColorPickerFrame:GetColorRGB()
 				a = 1 - OpacitySliderFrame:GetValue()
-			end
-			dbc.r, dbc.g, dbc.b, dbc.a = r, g, b, a
-			updatelook()
 		end
+			dbc.r, dbc.g, dbc.b, dbc.a = r, g, b, a
+		updatelook()
+	end
 		local function HideCheck(b)
 			if b and b.GetName and _G[b:GetName().."Check"] then
 				_G[b:GetName().."Check"]:Hide()
-			end
+	end
 		end
 		local function AddButton(lvl, text, keepshown)
 			info.text = text
@@ -821,11 +828,11 @@ function ShowOptions(a1)
 			info.func = Set
 			if value == "unlock" then
 				info.checked = CoolLine.unlock
-			else
+		else
 				info.checked = db[value]
-			end
-			AddButton(lvl, text, 1)
 		end
+			AddButton(lvl, text, 1)
+	end
 		local function AddList(lvl, text, value)
 			info.value = value
 			info.hasArrow = true
@@ -840,10 +847,10 @@ function ShowOptions(a1)
 			if tonumber(value) and tonumber(db[arg1] or "blah") then
 				if floor(100 * tonumber(value)) == floor(100 * tonumber(db[arg1])) then
 					info.checked = true
-				end
+	end
 			else
 				info.checked = db[arg1] == value
-			end
+	end
 			AddButton(lvl, text, 1)
 		end
 		local function AddColor(lvl, text, value)
@@ -937,13 +944,13 @@ CONFIGMODE_CALLBACKS.CoolLine = function(action, mode)
 		if not CoolLineDD then
 			ShowOptions()
 			ToggleDropDownMenu(1, nil, CoolLineDD, "cursor")
-		end
+			end
 		if CoolLineDD and not CoolLine.unlock then
 			Set(nil, "unlock")
 		end
 	elseif action == "OFF" then
 		if CoolLineDD and CoolLine.unlock then
 			Set(nil, "unlock")
-		end
+	end
 	end
 end
